@@ -1,13 +1,17 @@
 import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Question, AnswerRegion, GradedItem, UnmatchedAnswer } from './types';
 
-// ─── Multi-key rotator ────────────────────────────────────────────────────────
-// Add GEMINI_API_KEY_2, GEMINI_API_KEY_3, etc. in .env.local for rotation
+// ─── Multi-key rotator + Rate Limiter ─────────────────────────────────────────
+// Gemini 2.5 Flash free tier: ~10 RPM per key
+// Strategy:
+//   1. Minimum delay between calls (6s) to stay under 10 RPM
+//   2. On 429: exponential backoff (2s → 4s → 8s) on same key
+//   3. After 3 retries on same key: rotate to next key
+//   4. If all keys exhausted: surface a clear error
+
 function getApiKeys(): string[] {
   const keys: string[] = [];
-  // Primary key
   if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
-  // Additional keys: GEMINI_API_KEY_2, GEMINI_API_KEY_3, ...
   let i = 2;
   while (process.env[`GEMINI_API_KEY_${i}`]) {
     keys.push(process.env[`GEMINI_API_KEY_${i}`]!);
@@ -19,6 +23,8 @@ function getApiKeys(): string[] {
 
 const API_KEYS = getApiKeys();
 let currentKeyIndex = 0;
+let lastCallTime = 0;
+const MIN_CALL_INTERVAL_MS = 6000; // 6s gap = max 10 RPM
 
 function getModel() {
   const key = API_KEYS[currentKeyIndex];
@@ -26,31 +32,73 @@ function getModel() {
   return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 }
 
-// Call Gemini with automatic key rotation on rate limit errors
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Enforces minimum gap between API calls
+async function throttle() {
+  const now = Date.now();
+  const elapsed = now - lastCallTime;
+  if (elapsed < MIN_CALL_INTERVAL_MS) {
+    const wait = MIN_CALL_INTERVAL_MS - elapsed;
+    console.log(`[Gemini] Rate throttle: waiting ${wait}ms before next call`);
+    await sleep(wait);
+  }
+  lastCallTime = Date.now();
+}
+
+// Full strategy: throttle + exponential backoff + key rotation
 async function callWithRotation(
   fn: (model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>) => Promise<string>
 ): Promise<string> {
-  const startIndex = currentKeyIndex;
-  do {
-    try {
-      const result = await fn(getModel());
-      return result;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      const isRateLimit = message.includes('429') || message.toLowerCase().includes('quota') || message.toLowerCase().includes('rate');
-      if (isRateLimit && API_KEYS.length > 1) {
-        // Rotate to next key
-        currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-        console.warn(`[Gemini] Rate limit hit — rotating to key ${currentKeyIndex + 1}/${API_KEYS.length}`);
-        if (currentKeyIndex === startIndex) {
-          // All keys exhausted
-          throw new Error('All Gemini API keys have hit their rate limit. Please wait and try again.');
+  const MAX_RETRIES_PER_KEY = 3;
+  const startKeyIndex = currentKeyIndex;
+  let keyRotations = 0;
+
+  while (keyRotations <= API_KEYS.length) {
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRIES_PER_KEY) {
+      try {
+        await throttle(); // Proactive: enforce min gap between calls
+        const result = await fn(getModel());
+        return result;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        const isRateLimit =
+          message.includes('429') ||
+          message.toLowerCase().includes('quota') ||
+          message.toLowerCase().includes('rate limit');
+
+        if (isRateLimit) {
+          retryCount++;
+          if (retryCount < MAX_RETRIES_PER_KEY) {
+            // Exponential backoff: 2s, 4s, 8s
+            const backoff = Math.pow(2, retryCount) * 1000;
+            console.warn(`[Gemini] Rate limit on key ${currentKeyIndex + 1} — backoff ${backoff}ms (retry ${retryCount}/${MAX_RETRIES_PER_KEY})`);
+            await sleep(backoff);
+          }
+        } else {
+          throw err; // Non-rate-limit error — bubble up immediately
         }
-      } else {
-        throw err;
       }
     }
-  } while (true);
+
+    // This key is exhausted — rotate to next
+    if (API_KEYS.length > 1) {
+      currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
+      keyRotations++;
+      console.warn(`[Gemini] Key ${((currentKeyIndex - 1 + API_KEYS.length) % API_KEYS.length) + 1} exhausted — switching to key ${currentKeyIndex + 1}/${API_KEYS.length}`);
+      if (currentKeyIndex === startKeyIndex) break; // Full cycle done
+    } else {
+      break; // Only one key, no rotation possible
+    }
+  }
+
+  throw new Error(
+    `All ${API_KEYS.length} Gemini API key(s) have hit their rate limit. Please wait 1 minute and try again.`
+  );
 }
 
 
