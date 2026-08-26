@@ -174,20 +174,21 @@ The "pageIndex" is the 0-based index of the page image provided (0 for first ima
   return JSON.parse(jsonText) as Question[];
 }
 
-// ─── STEP 2: Extract answer regions from answer sheet images ──────────────────
+// ─── STEP 2: Extract answer regions from ALL answer sheet pages in ONE call ────
 export async function extractAnswers(
   pageImages: { base64: string; mimeType: string }[]
 ): Promise<AnswerRegion[]> {
   const prompt = `You are an expert OCR system for handwritten student answer sheets.
 
-Analyse each provided answer sheet page image and identify every distinct answer region.
+Analyse ALL provided answer sheet page images and identify every distinct answer region across all pages.
 
 RULES:
 - Each answer written by the student is a separate region.
-- For each region, provide a normalised bounding box (values between 0.0 and 1.0, relative to the full page dimensions): x (left), y (top), width, height.
+- For each region, provide a normalised bounding box (values between 0.0 and 1.0, relative to that page's dimensions): x (left), y (top), width, height.
 - Extract the full handwritten text of each answer (OCR).
 - If the student wrote a question label/number (e.g. "Ans 3", "Q.11a", "11(b)"), capture it in "questionLabel".
-- Return ONLY a valid JSON array. No markdown, no explanation.
+- pageIndex is 0-based (first page = 0, second = 1, etc.)
+- Return ONLY a valid JSON array covering all pages. No markdown, no explanation.
 
 Output JSON format:
 [
@@ -195,59 +196,38 @@ Output JSON format:
     "id": "ar_0_0",
     "pageIndex": 0,
     "boundingBox": { "x": 0.05, "y": 0.10, "width": 0.90, "height": 0.25 },
-    "extractedText": "Full OCR'd answer text here...",
+    "extractedText": "Full OCR answer text...",
     "questionLabel": "1"
   }
 ]
 
-The "id" format: "ar_" + pageIndex + "_" + regionIndex.
-Ensure bounding boxes tightly surround the actual handwritten answer content.`;
+The "id" format: "ar_" + pageIndex + "_" + regionIndex within that page.`;
 
-  const allRegions: AnswerRegion[] = [];
+  // Send ALL pages in a single call — Gemini 2.5 Flash has a 1M token context window
+  // This reduces answer extraction from N calls to just 1 call regardless of page count
+  const parts: Part[] = [{ text: prompt }];
+  pageImages.forEach(({ base64, mimeType }, idx) => {
+    parts.push({ text: `\n--- PAGE ${idx + 1} (pageIndex: ${idx}) ---` });
+    parts.push(imagePart(base64, mimeType));
+  });
 
-  // ── Batch pages: 4 per API call to stay well within RPD limits ──────────────
-  // A 40-page sheet = 10 batched calls instead of 40 individual calls
-  const BATCH_SIZE = 4;
-  const MAX_PAGES = 20; // Safety cap — beyond 20 pages we'd exhaust 20 RPD quota
-  const pagesToProcess = pageImages.slice(0, MAX_PAGES);
+  console.log(`[VedaAI] Extracting answers from all ${pageImages.length} pages in a single call`);
 
-  if (pageImages.length > MAX_PAGES) {
-    console.warn(`[VedaAI] Answer sheet has ${pageImages.length} pages — only processing first ${MAX_PAGES} due to API limits.`);
-  }
+  const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
+  const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 
-  for (let batchStart = 0; batchStart < pagesToProcess.length; batchStart += BATCH_SIZE) {
-    const batch = pagesToProcess.slice(batchStart, batchStart + BATCH_SIZE);
-
-    const parts: Part[] = [
-      { text: prompt + `\n\nProcessing pages ${batchStart + 1}–${batchStart + batch.length} of the answer sheet:` }
-    ];
-
-    batch.forEach(({ base64, mimeType }, i) => {
-      const pageIdx = batchStart + i;
-      parts.push({ text: `\n--- PAGE ${pageIdx + 1} (pageIndex: ${pageIdx}) ---` });
-      parts.push(imagePart(base64, mimeType));
+  try {
+    const regions = JSON.parse(jsonText) as AnswerRegion[];
+    // Ensure ids are set correctly
+    regions.forEach((r, i) => {
+      if (!r.id) r.id = `ar_${r.pageIndex ?? 0}_${i}`;
     });
-
-    const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
-    const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-
-    try {
-      const batchRegions = JSON.parse(jsonText) as AnswerRegion[];
-      // Ensure pageIndex and id are correct for each region
-      batchRegions.forEach((r, i) => {
-        if (r.pageIndex === undefined || r.pageIndex === null) {
-          r.pageIndex = batchStart; // fallback
-        }
-        r.id = `ar_${r.pageIndex}_${i}`;
-      });
-      allRegions.push(...batchRegions);
-      console.log(`[VedaAI] Batch pages ${batchStart + 1}–${batchStart + batch.length}: extracted ${batchRegions.length} answer regions`);
-    } catch {
-      console.warn(`[VedaAI] Failed to parse answer regions for batch starting page ${batchStart + 1}`);
-    }
+    console.log(`[VedaAI] Extracted ${regions.length} answer regions across ${pageImages.length} pages`);
+    return regions;
+  } catch {
+    console.warn('[VedaAI] Failed to parse answer regions — returning empty');
+    return [];
   }
-
-  return allRegions;
 }
 
 // ─── STEP 3 & 4: Map answers to questions + grade ────────────────────────────
