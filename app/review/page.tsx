@@ -119,32 +119,6 @@ function AnswerViewer({
   const imgRef = useRef<HTMLImageElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-jump to the correct page when a question is selected
-  useEffect(() => {
-    if (highlightRegions.length > 0 && highlightRegions[0].pageIndex !== undefined) {
-      const targetPage = highlightRegions[0].pageIndex;
-      if (targetPage >= 0 && targetPage < totalPages) {
-        setCurrentPage(targetPage);
-        
-        // Auto-scroll to the top of the first bounding box (retry until image is loaded)
-        const scrollToHighlight = () => {
-          if (scrollContainerRef.current && imgRef.current && imgRef.current.complete && imgRef.current.naturalHeight > 0) {
-            const firstRegion = highlightRegions[0];
-            const yOffset = firstRegion.boundingBox.y * imgRef.current.clientHeight;
-            scrollContainerRef.current.scrollTo({
-              top: Math.max(0, yOffset - 50),
-              behavior: 'smooth'
-            });
-            drawHighlights(); // Force a redraw once we know the image is fully loaded
-          } else {
-            setTimeout(scrollToHighlight, 50);
-          }
-        };
-        setTimeout(scrollToHighlight, 10);
-      }
-    }
-  }, [highlightRegions, totalPages, drawHighlights]);
-
   const drawHighlights = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -188,6 +162,32 @@ function AnswerViewer({
       ctx.fillText(labelText, px + 10, py - 8);
     });
   }, [highlightRegions, currentPage]);
+
+  // Auto-jump to the correct page when a question is selected
+  useEffect(() => {
+    if (highlightRegions.length > 0 && highlightRegions[0].pageIndex !== undefined) {
+      const targetPage = highlightRegions[0].pageIndex;
+      if (targetPage >= 0 && targetPage < totalPages) {
+        setCurrentPage(targetPage);
+        
+        // Auto-scroll to the top of the first bounding box (retry until image is loaded)
+        const scrollToHighlight = () => {
+          if (scrollContainerRef.current && imgRef.current && imgRef.current.complete && imgRef.current.naturalHeight > 0) {
+            const firstRegion = highlightRegions[0];
+            const yOffset = firstRegion.boundingBox.y * imgRef.current.clientHeight;
+            scrollContainerRef.current.scrollTo({
+              top: Math.max(0, yOffset - 50),
+              behavior: 'smooth'
+            });
+            drawHighlights(); // Force a redraw once we know the image is fully loaded
+          } else {
+            setTimeout(scrollToHighlight, 50);
+          }
+        };
+        setTimeout(scrollToHighlight, 10);
+      }
+    }
+  }, [highlightRegions, totalPages, drawHighlights]);
 
   useEffect(() => {
     drawHighlights();
