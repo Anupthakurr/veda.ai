@@ -96,7 +96,7 @@ function QuestionItem({
           )}
         </div>
       </div>
-      <div className={styles.questionText}><Latex>{item.question?.text || ''}</Latex></div>
+      <div className={styles.questionText}><Latex>{(item.question?.text || '').replace(/\\n|\n/g, ' ')}</Latex></div>
       {isSelected && item.aiFeedback && (
         <div className={styles.feedbackInline}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -415,7 +415,7 @@ export default function ReviewPage() {
             <div className={styles.feedbackPanel}>
               <div className={styles.feedbackHeader}>
                 <span className={styles.feedbackQNum}>Q{selectedItem.question?.number ?? '?'}</span>
-                <div className={styles.feedbackQText}><Latex>{selectedItem.question?.text || ''}</Latex></div>
+                <div className={styles.feedbackQText}><Latex>{(selectedItem.question?.text || '').replace(/\\n|\n/g, ' ')}</Latex></div>
               </div>
 
               <div className={styles.feedbackScore}>
