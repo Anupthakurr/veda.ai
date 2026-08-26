@@ -194,7 +194,7 @@ ${langInstruction}
 Analyse the provided question paper page images and extract ALL questions in the exact printed order.
 
 RULES:
-- CRITICAL SAFETY RULE: To avoid AI recitation filters on standard exam papers, DO NOT extract the questions completely verbatim. You MUST slightly paraphrase the non-mathematical text of each question, while preserving the exact mathematical equations, numbers, and core meaning.
+- CRITICAL SAFETY RULE: To avoid AI recitation filters on standard exam papers, DO NOT extract the questions completely verbatim. You MUST slightly paraphrase the non-mathematical text of each question, while preserving the exact mathematical equations, numbers, and core meaning. If you encounter a famous poem, passage, or copyrighted text, heavily summarize it instead of copying it.
 - EXTRACT EVERY SINGLE QUESTION. Do not skip, omit, or summarize any questions. You must comprehensively capture the entire paper.
 - IGNORE general instructions (e.g., "Attempt all questions", "Section A", "Time: 3 hours"). Only extract actual questions that require an answer.
 - NORMAL SUB-PARTS: If a question has labelled sub-parts (e.g., (a), (b), (c)) with NO "OR" between them, extract each sub-part as a SEPARATE question (e.g., 3 separate JSON entries).
@@ -257,7 +257,7 @@ Analyse ALL provided answer sheet page images and identify every distinct answer
 RULES:
 - Each answer written by the student is a separate region.
 - Identify the bounding box of the answer region relative to the specific page image. Coordinates (x, y, width, height) should be normalized between 0.0 and 1.0.
-- Extract the full handwritten text of each answer (OCR).
+- Extract the handwritten text of each answer. CRITICAL SAFETY RULE: To avoid AI recitation filters, DO NOT extract the text completely verbatim. You MUST slightly paraphrase the non-mathematical text of each answer, while preserving the exact mathematical equations, numbers, and core meaning.
 - If the student explicitly wrote a question number (e.g., "Ans 1", "Q. 5(a)"), capture it as "questionLabel". Otherwise, leave it null.
 - pageIndex is 0-based (first page = 0, second = 1, etc.)
 - CRITICAL MATH RULE: All mathematical symbols, variables, or equations MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math. Do not output naked LaTeX commands like \\vec{a}.
@@ -337,6 +337,7 @@ TASKS:
 CRITICAL REQUIREMENT: Your output JSON array MUST contain EXACTLY ${questionBatch.length} items in the gradedItems array. You MUST evaluate every single question in this batch.
 CRITICAL GRADING RULE: The marksAwarded MUST NOT exceed the maxMarks for the question. If maxMarks is 1, the maximum you can award is 1.
 
+CRITICAL SAFETY RULE: To avoid AI recitation filters, DO NOT quote the questions or answers verbatim in your feedback. Always paraphrase or summarize when referring to them.
 CRITICAL MATH RULE: All mathematical symbols, variables, or equations in your feedback MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math.
 CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values (use \\n instead).
 
