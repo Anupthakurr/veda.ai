@@ -198,6 +198,7 @@ Analyse the provided question paper page images and extract ALL questions in the
 RULES:
 - CRITICAL SAFETY RULE: To avoid AI recitation filters on standard exam papers, DO NOT extract the questions completely verbatim. You MUST slightly paraphrase the non-mathematical text of each question, while preserving the exact mathematical equations, numbers, and core meaning. If you encounter a famous poem, passage, or copyrighted text, heavily summarize it instead of copying it.
 - EXTRACT EVERY SINGLE QUESTION. Do not skip, omit, or summarize any questions. You must comprehensively capture the entire paper.
+- CRITICAL RULE FOR MCQs: For Multiple Choice Questions, you MUST extract ALL the options (e.g., (A) Paris, (B) London, etc.) along with the question text, keeping them together in the 'text' field. Do not omit the options.
 - IGNORE general instructions (e.g., "Attempt all questions", "Section A", "Time: 3 hours"). Only extract actual questions that require an answer.
 - NORMAL SUB-PARTS: If a question has labelled sub-parts (e.g., (a), (b), (c)) with NO "OR" between them, extract each sub-part as a SEPARATE question (e.g., 3 separate JSON entries).
 - CRITICAL RULE FOR "OR" CHOICES: If a question contains an internal "OR" choice (e.g., "Answer 21(a) OR 21(b)"), you must extract it as a SINGLE question entry. Place the shared stem of the question (if any) in the "text" field, and populate the "orOptions" JSON array with the text of each option.

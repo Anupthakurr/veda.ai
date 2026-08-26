@@ -126,17 +126,20 @@ function AnswerViewer({
       if (targetPage >= 0 && targetPage < totalPages) {
         setCurrentPage(targetPage);
         
-        // Auto-scroll to the top of the first bounding box
-        setTimeout(() => {
-          if (scrollContainerRef.current && imgRef.current) {
+        // Auto-scroll to the top of the first bounding box (retry until image is loaded)
+        const scrollToHighlight = () => {
+          if (scrollContainerRef.current && imgRef.current && imgRef.current.complete && imgRef.current.naturalHeight > 0) {
             const firstRegion = highlightRegions[0];
             const yOffset = firstRegion.boundingBox.y * imgRef.current.clientHeight;
             scrollContainerRef.current.scrollTo({
               top: Math.max(0, yOffset - 50),
               behavior: 'smooth'
             });
+          } else {
+            setTimeout(scrollToHighlight, 50);
           }
-        }, 50);
+        };
+        setTimeout(scrollToHighlight, 10);
       }
     }
   }, [highlightRegions, totalPages]);
