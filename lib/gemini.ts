@@ -2,12 +2,15 @@ import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Question, AnswerRegion, GradedItem, UnmatchedAnswer } from './types';
 
 // ─── Multi-key rotator + Rate Limiter ─────────────────────────────────────────
-// Gemini 2.5 Flash free tier: ~10 RPM per key
+// Gemini 2.5 Flash FREE tier actual limits:
+//   - 5 RPM  (requests per minute) per key
+//   - 20 RPD (requests per day)    per key
 // Strategy:
-//   1. Minimum delay between calls (6s) to stay under 10 RPM
+//   1. 13s minimum gap between calls  → stays safely under 5 RPM
 //   2. On 429: exponential backoff (2s → 4s → 8s) on same key
 //   3. After 3 retries on same key: rotate to next key
-//   4. If all keys exhausted: surface a clear error
+//   4. Track daily usage and warn when approaching 20 RPD
+//   5. If all keys exhausted: surface a clear error
 
 function getApiKeys(): string[] {
   const keys: string[] = [];
@@ -24,7 +27,12 @@ function getApiKeys(): string[] {
 const API_KEYS = getApiKeys();
 let currentKeyIndex = 0;
 let lastCallTime = 0;
-const MIN_CALL_INTERVAL_MS = 6000; // 6s gap = max 10 RPM
+const MIN_CALL_INTERVAL_MS = 13000; // 13s gap = ~4.6 RPM (safely under 5 RPM limit)
+
+// Per-key daily request counter (resets at midnight UTC)
+const dailyUsage: Record<number, { count: number; date: string }> = {};
+const RPD_LIMIT = 20;
+const RPD_WARN_AT = 16; // warn at 80% of daily limit
 
 function getModel() {
   const key = API_KEYS[currentKeyIndex];
@@ -36,16 +44,39 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Enforces minimum gap between API calls
+// Enforces minimum gap between API calls + tracks daily usage per key
 async function throttle() {
+  const todayUTC = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+  // Init or reset counter if it's a new day
+  if (!dailyUsage[currentKeyIndex] || dailyUsage[currentKeyIndex].date !== todayUTC) {
+    dailyUsage[currentKeyIndex] = { count: 0, date: todayUTC };
+  }
+
+  const usage = dailyUsage[currentKeyIndex];
+
+  // Block if daily limit reached for this key
+  if (usage.count >= RPD_LIMIT) {
+    throw new Error(`429: Key ${currentKeyIndex + 1} has reached its daily limit of ${RPD_LIMIT} requests.`);
+  }
+
+  // Warn when approaching limit
+  if (usage.count >= RPD_WARN_AT) {
+    console.warn(`[Gemini] Key ${currentKeyIndex + 1}: ${usage.count}/${RPD_LIMIT} daily requests used — approaching limit!`);
+  }
+
+  // Enforce minimum gap between calls (5 RPM = 13s gap)
   const now = Date.now();
   const elapsed = now - lastCallTime;
   if (elapsed < MIN_CALL_INTERVAL_MS) {
     const wait = MIN_CALL_INTERVAL_MS - elapsed;
-    console.log(`[Gemini] Rate throttle: waiting ${wait}ms before next call`);
+    console.log(`[Gemini] Throttle: waiting ${(wait / 1000).toFixed(1)}s (key ${currentKeyIndex + 1}, ${usage.count}/${RPD_LIMIT} RPD used)`);
     await sleep(wait);
   }
+
   lastCallTime = Date.now();
+  usage.count++; // Increment AFTER throttle wait
+  console.log(`[Gemini] Key ${currentKeyIndex + 1}: request ${usage.count}/${RPD_LIMIT} today`);
 }
 
 // Full strategy: throttle + exponential backoff + key rotation
