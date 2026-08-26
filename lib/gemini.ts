@@ -38,7 +38,7 @@ function getModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-3.5-flash-lite',
+    model: 'gemini-2.5-flash',
     systemInstruction: "CRITICAL: You MUST heavily paraphrase any long blocks of non-mathematical text to avoid triggering verbatim repetition filters. Never quote verbatim.",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
@@ -50,7 +50,7 @@ function getGradingModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-3.5-flash-lite',
+    model: 'gemini-2.5-flash',
     systemInstruction: "CRITICAL: You MUST heavily paraphrase any long blocks of non-mathematical text to avoid triggering verbatim repetition filters. Never quote verbatim.",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
@@ -236,10 +236,13 @@ The "pageIndex" is the 0-based index of the page image provided (0 for first ima
     parts.push(imagePart(base64, mimeType));
   });
 
-  const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
-
-  // Strip markdown code fences if present
-  return parseAIJson<Question[]>(text);
+  try {
+    const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
+    // Strip markdown code fences if present
+    return parseAIJson<Question[]>(text);
+  } catch (err: any) {
+    throw new Error(`[extractQuestions] ${err.message || String(err)}`);
+  }
 }
 
 // ─── STEP 2: Extract answer regions from ALL answer sheet pages in ONE call ────
@@ -289,17 +292,19 @@ The "id" format: "ar_" + pageIndex + "_" + regionIndex within that page.`;
     });
 
     console.log(`[VedaAI] Processing batch: pages ${i + 1} to ${i + batchImages.length}`);
-    const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
-
     try {
+      const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
       const regions = parseAIJson<AnswerRegion[]>(text);
       // Ensure ids are set correctly
       regions.forEach((r, idx) => {
         if (!r.id) r.id = `ar_${r.pageIndex ?? 0}_${idx}`;
       });
       allRegions.push(...regions);
-    } catch {
-      console.warn(`[VedaAI] Failed to parse answer regions for batch ${i + 1} — skipping this batch`);
+    } catch (err: any) {
+      if (err.message && err.message.includes('RECITATION')) {
+        throw new Error(`[extractAnswers] ${err.message}`);
+      }
+      console.warn(`[VedaAI] Failed to parse answer regions for batch ${i + 1} — skipping this batch. Error: ${err.message}`);
     }
   }
 
@@ -371,12 +376,12 @@ Return ONLY a valid JSON object in this format:
 Status values: "answered" | "unanswered"
 An answer can span multiple pages: answerRegionIds can have multiple entries.`;
 
-    const text = await callWithRotation(
-      m => m.generateContent(prompt).then(r => r.response.text().trim()),
-      getGradingModel
-    );
-
     try {
+      const text = await callWithRotation(
+        m => m.generateContent(prompt).then(r => r.response.text().trim()),
+        getGradingModel
+      );
+
       const mapping = parseAIJson<any>(text);
       if (mapping.gradedItems && Array.isArray(mapping.gradedItems)) {
         for (const item of mapping.gradedItems) {
@@ -386,8 +391,11 @@ An answer can span multiple pages: answerRegionIds can have multiple entries.`;
       if (mapping.overallFeedback) {
         overallFeedbacks.push(mapping.overallFeedback);
       }
-    } catch (e) {
-      console.warn(`[VedaAI] Failed to parse grading batch ${i + 1}`);
+    } catch (err: any) {
+      if (err.message && err.message.includes('RECITATION')) {
+        throw new Error(`[mapAndGrade] ${err.message}`);
+      }
+      console.warn(`[VedaAI] Failed to parse grading batch ${i + 1}. Error: ${err.message}`);
     }
   }
 
