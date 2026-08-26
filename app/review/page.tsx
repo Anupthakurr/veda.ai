@@ -121,6 +121,16 @@ function AnswerViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
+  // Auto-jump to the correct page when a question is selected
+  useEffect(() => {
+    if (highlightRegions.length > 0 && highlightRegions[0].pageIndex !== undefined) {
+      const targetPage = highlightRegions[0].pageIndex;
+      if (targetPage >= 0 && targetPage < totalPages) {
+        setCurrentPage(targetPage);
+      }
+    }
+  }, [highlightRegions, totalPages]);
+
   const drawHighlights = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
