@@ -38,7 +38,8 @@ export async function fileToImageUrls(file: File): Promise<string[]> {
     canvas.height = viewport.height;
 
     const ctx = canvas.getContext('2d')!;
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    // pdfjs-dist v4 types require `canvas` in render params — cast to satisfy compiler
+    await page.render({ canvasContext: ctx, viewport, canvas } as Parameters<typeof page.render>[0]).promise;
 
     // Convert canvas to a blob URL
     const blob: Blob = await new Promise(resolve =>
