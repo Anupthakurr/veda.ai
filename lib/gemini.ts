@@ -31,10 +31,28 @@ const dailyUsage: Record<number, { count: number; date: string }> = {};
 const RPD_LIMIT = 20;
 const RPD_WARN_AT = 16; // warn at 80% of daily limit
 
+
+// Fast model — thinking DISABLED (extraction calls don't need deep reasoning)
+// Disabling thinking saves 15-30s per call
 function getModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
-  return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  return genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    generationConfig: { thinkingConfig: { thinkingBudget: 0 } } as any,
+  });
+}
+
+// Grading model — minimal thinking budget (enough for accurate scoring, not slow)
+function getGradingModel() {
+  const key = API_KEYS[currentKeyIndex];
+  const genAI = new GoogleGenerativeAI(key);
+  return genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    generationConfig: { thinkingConfig: { thinkingBudget: 512 } } as any,
+  });
 }
 
 function sleep(ms: number) {
@@ -64,7 +82,8 @@ function trackUsage(): void {
 
 // Full strategy: daily tracking + reactive backoff on 429 + key rotation
 async function callWithRotation(
-  fn: (model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>) => Promise<string>
+  fn: (model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>) => Promise<string>,
+  modelSelector: () => ReturnType<GoogleGenerativeAI['getGenerativeModel']> = getModel
 ): Promise<string> {
   const MAX_RETRIES_PER_KEY = 3;
   const startKeyIndex = currentKeyIndex;
@@ -76,7 +95,7 @@ async function callWithRotation(
     while (retryCount < MAX_RETRIES_PER_KEY) {
       try {
         trackUsage(); // Check/increment daily counter
-        const result = await fn(getModel());
+        const result = await fn(modelSelector());
         return result;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -281,7 +300,10 @@ Output JSON format:
 Status values: "answered" | "unanswered" | "unmatched"
 An answer can span multiple pages: answerRegionIds can have multiple entries.`;
 
-  const text = await callWithRotation(m => m.generateContent(prompt).then(r => r.response.text().trim()));
+  const text = await callWithRotation(
+    m => m.generateContent(prompt).then(r => r.response.text().trim()),
+    getGradingModel  // use minimal-thinking model for faster grading
+  );
   const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 
   interface MappingResult {
