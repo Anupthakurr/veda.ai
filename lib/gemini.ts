@@ -184,8 +184,8 @@ export async function extractQuestions(
   language: string = 'auto'
 ): Promise<Question[]> {
   let langInstruction = '';
-  if (language === 'english') langInstruction = 'CRITICAL: If the question paper contains dual languages (e.g., Hindi and English), extract the questions ONLY in English.';
-  else if (language === 'hindi') langInstruction = 'CRITICAL: If the question paper contains dual languages (e.g., Hindi and English), extract the questions ONLY in Hindi.';
+  if (language === 'english') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST extract the questions strictly in ENGLISH. Completely ignore any Hindi translations printed on the paper.';
+  else if (language === 'hindi') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST extract the questions strictly in HINDI. Completely ignore any English translations printed on the paper.';
   else langInstruction = 'Extract the questions in the language they are written.';
 
   const prompt = `You are an expert at analysing question papers.
@@ -301,8 +301,8 @@ export async function mapAndGrade(
   language: string = 'auto'
 ): Promise<{ gradedItems: GradedItem[]; unmatchedAnswers: UnmatchedAnswer[] }> {
   let langInstruction = '';
-  if (language === 'english') langInstruction = 'CRITICAL: You MUST write all your feedback (aiFeedback and overallFeedback) ONLY in English, regardless of the language of the question paper or student answers.';
-  else if (language === 'hindi') langInstruction = 'CRITICAL: You MUST write all your feedback (aiFeedback and overallFeedback) ONLY in Hindi, regardless of the language of the question paper or student answers.';
+  if (language === 'english') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST write all your feedback (aiFeedback and overallFeedback) strictly in ENGLISH. Do not use Hindi.';
+  else if (language === 'hindi') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST write all your feedback (aiFeedback and overallFeedback) strictly in HINDI. Do not use English.';
   else langInstruction = 'Write your feedback in the same language that the question paper and student answers are written in.';
 
   const prompt = `You are an expert teacher and grader.
