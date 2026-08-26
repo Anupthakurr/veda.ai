@@ -301,10 +301,7 @@ The "id" format: "ar_" + pageIndex + "_" + regionIndex within that page.`;
       });
       allRegions.push(...regions);
     } catch (err: any) {
-      if (err.message && err.message.includes('RECITATION')) {
-        throw new Error(`[extractAnswers] ${err.message}`);
-      }
-      console.warn(`[VedaAI] Failed to parse answer regions for batch ${i + 1} — skipping this batch. Error: ${err.message}`);
+      throw new Error(`[extractAnswers] ${err.message || String(err)}`);
     }
   }
 
@@ -392,10 +389,7 @@ An answer can span multiple pages: answerRegionIds can have multiple entries.`;
         overallFeedbacks.push(mapping.overallFeedback);
       }
     } catch (err: any) {
-      if (err.message && err.message.includes('RECITATION')) {
-        throw new Error(`[mapAndGrade] ${err.message}`);
-      }
-      console.warn(`[VedaAI] Failed to parse grading batch ${i + 1}. Error: ${err.message}`);
+      throw new Error(`[mapAndGrade] ${err.message || String(err)}`);
     }
   }
 
