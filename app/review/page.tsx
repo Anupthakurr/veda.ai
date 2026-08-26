@@ -41,7 +41,37 @@ function QuestionItem({
             {subNum && <div className={styles.questionSubNum}>{subNum}</div>}
           </div>
           <div className={styles.questionText}>
-            <Latex>{(item.question?.text || '').replace(/\\n|\n/g, ' ')}</Latex>
+            {item.question?.text && (
+              <div className={styles.questionStem}>
+                <Latex>{item.question.text.replace(/\\n|\n/g, ' ')}</Latex>
+              </div>
+            )}
+            
+            {item.question?.orOptions && item.question.orOptions.length > 0 && (
+              <div className={styles.orOptionsContainer}>
+                {item.question.orOptions.map((opt, idx) => {
+                  const isMapped = item.answeredOptionIndex === idx;
+                  const hasMapped = item.answeredOptionIndex !== undefined;
+                  const optionClass = isMapped 
+                    ? styles.orOptionMapped 
+                    : (hasMapped ? styles.orOptionUnmapped : '');
+                  
+                  return (
+                    <div key={idx}>
+                      {idx > 0 && (
+                        <div className={styles.orDivider}>
+                          <span>OR</span>
+                        </div>
+                      )}
+                      <div className={`${styles.orOption} ${optionClass}`}>
+                        {isMapped && <div className={styles.mappedBadge}>Answered</div>}
+                        <Latex>{opt.replace(/\\n|\n/g, ' ')}</Latex>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
         <div className={styles.questionRight}>

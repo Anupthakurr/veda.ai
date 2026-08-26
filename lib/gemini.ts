@@ -200,7 +200,7 @@ RULES:
 - EXTRACT EVERY SINGLE QUESTION. Do not skip, omit, or summarize any questions. You must comprehensively capture the entire paper.
 - IGNORE general instructions (e.g., "Attempt all questions", "Section A", "Time: 3 hours"). Only extract actual questions that require an answer.
 - NORMAL SUB-PARTS: If a question has labelled sub-parts (e.g., (a), (b), (c)) with NO "OR" between them, extract each sub-part as a SEPARATE question (e.g., 3 separate JSON entries).
-- CRITICAL RULE FOR "OR" CHOICES: If sub-parts or whole questions are separated by "OR" / "अथवा" (e.g., "21(a) ... OR (b) ..."), YOU MUST MERGE BOTH OPTIONS into a SINGLE question entry in the JSON. NEVER split an "OR" choice into multiple JSON objects.
+- CRITICAL RULE FOR "OR" CHOICES: If a question contains an internal "OR" choice (e.g., "Answer 21(a) OR 21(b)"), you must extract it as a SINGLE question entry. Place the shared stem of the question (if any) in the "text" field, and populate the "orOptions" JSON array with the text of each option.
 - Preserve the ORIGINAL question numbering exactly as printed.
 - INFER THE MARKING SCHEME accurately. Read the instructions at the top (e.g., "Q1-5 carry 1 mark") AND look for marks printed next to questions (e.g., "[5]"). Assign the correct maxMarks to EACH question based on the official scheme. If completely unknown, default to 5.
 - CRITICAL MATH RULE: All mathematical symbols, variables, or equations MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math. Do not output naked LaTeX commands like \\vec{a}.
@@ -217,9 +217,10 @@ Output JSON format:
     "pageIndex": 0
   },
   {
-    "id": "q2a",
-    "number": "2(a)",
-    "text": "Sub-part question text...",
+    "id": "q2",
+    "number": "2",
+    "text": "Attempt one of the following:",
+    "orOptions": ["Write a short note on AI.", "Explain Machine Learning."],
     "maxMarks": 3,
     "pageIndex": 0
   }
@@ -334,7 +335,8 @@ TASKS:
 1. For EVERY SINGLE QUESTION in the provided QUESTIONS list, attempt to find its corresponding handwritten answer in the ANSWER REGIONS list. Pay close attention to question numbers written by the student (e.g., "Ans 1", "Q. 5(a)").
 2. If a question was not answered by the student, mark it as unanswered.
 3. Grade each answered question: award marks STRICTLY based on the maxMarks provided in the QUESTION object. CRITICAL: Do NOT exceed maxMarks. Award partial marks for partially correct answers. Provide brief feedback.
-4. Provide a brief overall feedback summary for this batch.
+4. IF the question contains an "orOptions" array, determine exactly which option the student answered and output its 0-based index in the "answeredOptionIndex" field (e.g., 0 for the first option, 1 for the second).
+5. Provide a brief overall feedback summary for this batch.
 
 CRITICAL REQUIREMENT: Your output JSON array MUST contain EXACTLY ${questionBatch.length} items in the gradedItems array. You MUST evaluate every single question in this batch.
 CRITICAL GRADING RULE: The marksAwarded MUST NOT exceed the maxMarks for the question. If maxMarks is 1, the maximum you can award is 1.
@@ -358,7 +360,8 @@ Return ONLY a valid JSON object in this format:
       "status": "answered",
       "marksAwarded": 1,
       "isCorrect": true,
-      "aiFeedback": "Good answer, covers the main points."
+      "aiFeedback": "Good answer, covers the main points.",
+      "answeredOptionIndex": 0
     }
   ],
   "overallFeedback": "The student demonstrated good understanding of this section."
@@ -413,6 +416,7 @@ An answer can span multiple pages: answerRegionIds can have multiple entries.`;
         marksAwarded: marks,
         isCorrect: gradedInfo.isCorrect,
         aiFeedback: gradedInfo.aiFeedback || '',
+        answeredOptionIndex: gradedInfo.answeredOptionIndex,
       };
     } else {
       return {

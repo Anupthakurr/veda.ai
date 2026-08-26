@@ -2,7 +2,8 @@
 export interface Question {
   id: string;            // e.g. "q1", "q11a", "q11b"
   number: string;        // e.g. "1", "11(a)", "11(b)"
-  text: string;          // Full question text
+  text: string;          // Full question text (or shared stem for OR questions)
+  orOptions?: string[];  // Array of options if this is an OR question (e.g. ["Option A", "Option B"])
   maxMarks: number;      // Marks allocated (if detectable)
   pageIndex?: number;    // Page it appears on (0-indexed)
 }
@@ -35,6 +36,7 @@ export interface GradedItem {
   marksAwarded: number;
   isCorrect: boolean | null;        // null if unanswered
   aiFeedback: string;
+  answeredOptionIndex?: number;     // For OR questions, indicates which option (0 or 1) the student answered
 }
 
 // ─── Unmatched answer (student wrote something not tied to any question) ───────
