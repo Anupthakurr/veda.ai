@@ -84,7 +84,7 @@ export default function UploadPage() {
   const [answerFiles, setAnswerFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [language, setLanguage] = useState('auto');
+  const [language, setLanguage] = useState('english');
 
   const canAnalyze = questionFiles.length > 0 && answerFiles.length > 0 && !isProcessing;
 
