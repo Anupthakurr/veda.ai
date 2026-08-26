@@ -42,6 +42,17 @@ Open http://localhost:3000
 
 **Tech Stack:** Next.js 14 (App Router) · TypeScript · Vanilla CSS · **Google Gemini 3.5 Flash-Lite**
 
+**AI Pipeline Workflow:**
+```mermaid
+graph TD
+    Q[📄 Question Paper] -->|Gemini Vision| QE(🔍 Question Extraction)
+    A[📝 Answer Sheet] -->|Gemini Vision OCR| AE(🔍 Answer Extraction)
+    QE -->|Structured Questions| M(🔗 Answer Mapping)
+    AE -->|Text & Bounding Boxes| M
+    M -->|Q&A Pairs| G(✅ Grading & Feedback)
+    G --> UI[🎯 Final Score & Visual UI]
+```
+
 **AI Pipeline:**
 1. **Question Extraction** — Gemini Vision reads the question paper, extracts all questions in order, handles sub-parts (11a, 11b) and "OR" options as structured entries.
 2. **Answer Extraction** — Gemini Vision processes each answer sheet page with OCR, extracts handwritten text and bounding boxes (normalised 0–1 coordinates).
