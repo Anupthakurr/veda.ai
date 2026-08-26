@@ -5,6 +5,16 @@
 ## 🚀 Live Demo
 *[Add Vercel URL after deployment]*
 
+## 📸 Screenshots
+
+### Upload Interface
+![Homepage Upload Interface](public/upload-1.png)
+![Analysis Settings](public/upload-2.png)
+
+### Grading & Feedback View
+![Grading View - Probability Question](public/grading-1.png)
+![Grading View - Multiple Choice](public/grading-2.png)
+
 ## ⚙️ Setup
 
 ### 1. Clone the repo
