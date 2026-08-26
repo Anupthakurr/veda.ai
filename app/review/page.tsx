@@ -7,102 +7,59 @@ import styles from './review.module.css';
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
 
-// ─── Score Summary Banner ──────────────────────────────────────────────────────
-function ScoreSummary({ result }: { result: AnalysisResult }) {
-  const answeredCount = result.gradedItems.filter(i => i.status === 'answered').length;
-  const unansweredCount = result.gradedItems.filter(i => i.status === 'unanswered').length;
-
-  return (
-    <div className={styles.scoreBanner}>
-      <div className={styles.scoreLeft}>
-        <div className={styles.scoreCircle}>
-          <svg viewBox="0 0 36 36" className={styles.scoreRing}>
-            <path
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke="var(--color-border)"
-              strokeWidth="2"
-            />
-            <path
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke="var(--color-primary)"
-              strokeWidth="2.5"
-              strokeDasharray={`${result.percentage}, 100`}
-              strokeLinecap="round"
-            />
-          </svg>
-          <div className={styles.scoreCircleText}>
-            <span className={styles.scoreGrade}>{result.grade}</span>
-            <span className={styles.scorePct}>{result.percentage}%</span>
-          </div>
-        </div>
-        <div>
-          <p className={styles.scoreMarks}>{result.marksAwarded} / {result.totalMarks} marks</p>
-          <p className={styles.scoreLabel}>Total Score</p>
-        </div>
-      </div>
-      <div className={styles.scoreStats}>
-        <div className={styles.scoreStat}>
-          <span className={styles.scoreStatNum} style={{ color: 'var(--color-success)' }}>{answeredCount}</span>
-          <span className={styles.scoreStatLabel}>Answered</span>
-        </div>
-        <div className={styles.scoreDivider} />
-        <div className={styles.scoreStat}>
-          <span className={styles.scoreStatNum} style={{ color: 'var(--color-error)' }}>{unansweredCount}</span>
-          <span className={styles.scoreStatLabel}>Unanswered</span>
-        </div>
-        <div className={styles.scoreDivider} />
-        <div className={styles.scoreStat}>
-          <span className={styles.scoreStatNum} style={{ color: 'var(--color-warning)' }}>{result.unmatchedAnswers.length}</span>
-          <span className={styles.scoreStatLabel}>Unmatched</span>
-        </div>
-      </div>
-      <div className={styles.scoreFeedback}>
-        <div className={styles.scoreFeedbackText}><Latex>{result.overallFeedback || ''}</Latex></div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Question List Item ────────────────────────────────────────────────────────
+// ─── Question List Item (Accordion) ────────────────────────────────────────────
 function QuestionItem({
   item,
-  isSelected,
-  onClick,
+  isExpanded,
+  onToggle,
 }: {
   item: GradedItem;
-  isSelected: boolean;
-  onClick: () => void;
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
-  const statusConfig = {
-    answered: { label: '✓ Answered', cls: styles.badgeSuccess },
-    unanswered: { label: '✗ Unanswered', cls: styles.badgeError },
-    unmatched: { label: '⚠ Unmatched', cls: styles.badgeWarning },
-  };
-  const s = statusConfig[item.status];
+  const maxMarks = item.question?.maxMarks ?? 5;
+  const marks = item.marksAwarded;
+  
+  let scoreColorCls = styles.scoreRed;
+  if (marks === maxMarks) scoreColorCls = styles.scoreGreen;
+  else if (marks > 0) scoreColorCls = styles.scoreOrange;
 
   return (
     <div
-      className={`${styles.questionItem} ${isSelected ? styles.questionItemSelected : ''}`}
-      onClick={onClick}
+      className={`${styles.questionItem} ${isExpanded ? styles.questionItemExpanded : ''}`}
+      onClick={onToggle}
     >
       <div className={styles.questionHeader}>
-        <div className={styles.questionNum}>{item.question?.number ?? '?'}</div>
-        <div className={styles.questionMeta}>
-          <span className={`${styles.badge} ${s.cls}`}>{s.label}</span>
-          {item.status === 'answered' && (
-            <span className={styles.scoreChip}>{item.marksAwarded}/{item.question?.maxMarks ?? 5}</span>
-          )}
+        <div className={styles.questionNumWrapper}>
+          <div className={styles.questionNumBadge}>{item.question?.number ?? '?'}</div>
+          <div className={styles.questionText}>
+            <Latex>{(item.question?.text || '').replace(/\\n|\n/g, ' ')}</Latex>
+          </div>
+        </div>
+        <div className={styles.questionRight}>
+          <span className={`${styles.scorePill} ${scoreColorCls}`}>
+            {marks}/{maxMarks}
+          </span>
+          <div className={styles.chevron}>
+            {isExpanded ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </div>
         </div>
       </div>
-      <div className={styles.questionText}><Latex>{(item.question?.text || '').replace(/\\n|\n/g, ' ')}</Latex></div>
-      {isSelected && item.aiFeedback && (
-        <div className={styles.feedbackInline}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 9a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1zm0-4a1 1 0 100 2 1 1 0 000-2z"/>
-          </svg>
-          <Latex>{item.aiFeedback}</Latex>
+      
+      {isExpanded && item.aiFeedback && (
+        <div className={styles.feedbackContainer}>
+          <p className={styles.feedbackLabel}>AI Feedback</p>
+          <div className={styles.feedbackText}>
+            <Latex>{item.aiFeedback}</Latex>
+          </div>
         </div>
       )}
     </div>
@@ -135,15 +92,13 @@ function AnswerViewer({
         setTimeout(() => {
           if (scrollContainerRef.current && imgRef.current) {
             const firstRegion = highlightRegions[0];
-            // Calculate pixel Y offset based on the image's current rendered height
             const yOffset = firstRegion.boundingBox.y * imgRef.current.clientHeight;
-            // Scroll to the y position, minus a little padding so it's not strictly at the top edge
             scrollContainerRef.current.scrollTo({
               top: Math.max(0, yOffset - 50),
               behavior: 'smooth'
             });
           }
-        }, 50); // small delay to allow image/page render
+        }, 50);
       }
     }
   }, [highlightRegions, totalPages]);
@@ -158,7 +113,6 @@ function AnswerViewer({
 
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const pageRegions = highlightRegions.filter(r => r.pageIndex === currentPage);
@@ -170,21 +124,26 @@ function AnswerViewer({
       const pw = width * canvas.width;
       const ph = height * canvas.height;
 
-      // Highlight fill
-      ctx.fillStyle = 'rgba(240, 90, 40, 0.18)';
+      // Green Highlight fill
+      ctx.fillStyle = 'rgba(74, 222, 128, 0.15)'; // Light green tint
       ctx.fillRect(px, py, pw, ph);
 
-      // Border
-      ctx.strokeStyle = 'rgba(240, 90, 40, 0.85)';
-      ctx.lineWidth = 3;
+      // Solid Green Border
+      ctx.strokeStyle = '#4ADE80'; // Green-400
+      ctx.lineWidth = 4;
       ctx.strokeRect(px, py, pw, ph);
 
-      // Top-left corner label
-      ctx.fillStyle = 'rgba(240, 90, 40, 0.95)';
-      ctx.fillRect(px, py - 22, 60, 22);
-      ctx.fillStyle = 'white';
-      ctx.font = 'bold 13px Inter, sans-serif';
-      ctx.fillText(region.questionLabel ? `Q ${region.questionLabel}` : 'Answer', px + 6, py - 6);
+      // Top-left corner label (Q2 etc)
+      const labelText = region.questionLabel ? `Q${region.questionLabel}` : 'Ans';
+      ctx.fillStyle = '#4ADE80';
+      ctx.beginPath();
+      // Draw rounded tab
+      ctx.roundRect(px, py - 28, 48, 28, [8, 8, 0, 0]);
+      ctx.fill();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px Inter, sans-serif';
+      ctx.fillText(labelText, px + 10, py - 8);
     });
   }, [highlightRegions, currentPage]);
 
@@ -197,26 +156,36 @@ function AnswerViewer({
 
   return (
     <div className={styles.viewer}>
-      {/* Page navigation */}
-      {totalPages > 1 && (
-        <div className={styles.pageNav}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-            disabled={currentPage === 0}
-          >
-            ← Prev
-          </button>
-          <span className={styles.pageLabel}>Page {currentPage + 1} of {totalPages}</span>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={currentPage === totalPages - 1}
-          >
-            Next →
-          </button>
+      {/* Dark Header Strip */}
+      <div className={styles.viewerHeader}>
+        <span className={styles.viewerTitle}>Answer Sheet</span>
+        <div className={styles.viewerControls}>
+          <div className={styles.zoomControl}>
+            <button className={styles.iconBtn}>-</button>
+            <span className={styles.zoomText}>100%</span>
+            <button className={styles.iconBtn}>+</button>
+          </div>
+          {totalPages > 1 && (
+            <div className={styles.pageControl}>
+              <button
+                className={styles.iconBtn}
+                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+              >
+                {'<'}
+              </button>
+              <span className={styles.pageText}>Page {currentPage + 1} of {totalPages}</span>
+              <button
+                className={styles.iconBtn}
+                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage === totalPages - 1}
+              >
+                {'>'}
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Image + canvas overlay */}
       <div className={styles.imageContainer} ref={scrollContainerRef}>
@@ -229,36 +198,19 @@ function AnswerViewer({
               className={styles.answerImage}
               ref={el => {
                 imgRef.current = el;
-                if (el) {
-                  el.onload = drawHighlights;
-                }
+                if (el) el.onload = drawHighlights;
               }}
             />
             {hasHighlightsOnPage && (
-              <canvas
-                ref={canvasRef}
-                className={styles.highlightCanvas}
-              />
+              <canvas ref={canvasRef} className={styles.highlightCanvas} />
             )}
           </div>
         ) : (
           <div className={styles.noImage}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
             <p>No image available for this page</p>
           </div>
         )}
       </div>
-
-      {highlightRegions.length === 0 && (
-        <div className={styles.viewerHint}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Select a question from the left panel to highlight its answer region
-        </div>
-      )}
     </div>
   );
 }
@@ -269,20 +221,18 @@ export default function ReviewPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [answerImages, setAnswerImages] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<GradedItem | null>(null);
-  const [activeTab, setActiveTab] = useState<'questions' | 'unmatched'>('questions');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'answered' | 'unanswered'>('all');
+  
+  // For mobile segmented control
+  const [mobileTab, setMobileTab] = useState<'questions' | 'viewer'>('questions');
 
   useEffect(() => {
     const stored = sessionStorage.getItem('analysisResult');
-
     if (!stored) {
       router.push('/');
       return;
     }
-
     setResult(JSON.parse(stored));
 
-    // Read answer sheet Object URLs from window global (set by upload page)
     const urls = (window as unknown as { __answerSheetURLs?: string[] }).__answerSheetURLs;
     if (urls && urls.length > 0) {
       setAnswerImages(urls);
@@ -298,11 +248,6 @@ export default function ReviewPage() {
     );
   }
 
-  const filteredItems = result.gradedItems.filter(item => {
-    if (filterStatus === 'all') return true;
-    return item.status === filterStatus;
-  });
-
   const highlightRegions = selectedItem ? selectedItem.answerRegions : [];
 
   return (
@@ -310,162 +255,77 @@ export default function ReviewPage() {
       {/* Navbar */}
       <nav className="navbar">
         <div className="navbar__inner">
-          <a href="/" className="navbar__logo">
-            <div className="navbar__logo-icon">V</div>
-            <span className="navbar__logo-text">Veda<span>AI</span></span>
-          </a>
-          <div className={styles.navActions}>
-            <button className="btn btn-secondary btn-sm" onClick={() => router.push('/')}>
-              ← New Assessment
+          <div className={styles.navLeft}>
+            <button className={styles.navBackBtn} onClick={() => router.push('/')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Exams
             </button>
+          </div>
+          <div className={styles.navRight}>
+            <div className={styles.avatar}>MR</div>
           </div>
         </div>
       </nav>
 
-      {/* Score Banner */}
-      <ScoreSummary result={result} />
+      {/* Mobile Segmented Control */}
+      <div className={styles.mobileTabs}>
+        <div className={styles.segmentedControl}>
+          <button 
+            className={`${styles.segmentBtn} ${mobileTab === 'questions' ? styles.segmentActive : ''}`}
+            onClick={() => setMobileTab('questions')}
+          >
+            Questions
+          </button>
+          <button 
+            className={`${styles.segmentBtn} ${mobileTab === 'viewer' ? styles.segmentActive : ''}`}
+            onClick={() => setMobileTab('viewer')}
+          >
+            Answer Sheet
+          </button>
+        </div>
+      </div>
 
-      {/* Three-column layout */}
+      {/* Two-column layout */}
       <div className={styles.layout}>
         {/* Left: Question List */}
-        <aside className={styles.leftPanel}>
+        <aside className={`${styles.leftPanel} ${mobileTab === 'questions' ? styles.showOnMobile : styles.hideOnMobile}`}>
           <div className={styles.panelHeader}>
-            <div className={styles.panelTabs}>
-              <button
-                className={`${styles.tab} ${activeTab === 'questions' ? styles.tabActive : ''}`}
-                onClick={() => setActiveTab('questions')}
-              >
-                Questions ({result.gradedItems.length})
-              </button>
-              {result.unmatchedAnswers.length > 0 && (
-                <button
-                  className={`${styles.tab} ${activeTab === 'unmatched' ? styles.tabActive : ''}`}
-                  onClick={() => setActiveTab('unmatched')}
-                >
-                  Unmatched ({result.unmatchedAnswers.length})
-                </button>
-              )}
-            </div>
-
-            {activeTab === 'questions' && (
-              <div className={styles.filterRow}>
-                {(['all', 'answered', 'unanswered'] as const).map(f => (
-                  <button
-                    key={f}
-                    className={`${styles.filterBtn} ${filterStatus === f ? styles.filterBtnActive : ''}`}
-                    onClick={() => setFilterStatus(f)}
-                  >
-                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                  </button>
-                ))}
-              </div>
-            )}
+            <h2 className={styles.panelTitle}>Extracted Questions (from question paper)</h2>
+            <button className={styles.expandAllBtn} onClick={() => setSelectedItem(null)}>
+              Expand All
+            </button>
           </div>
 
           <div className={styles.questionList}>
-            {activeTab === 'questions' && filteredItems.map((item, index) => (
+            {result.gradedItems.map((item, index) => (
               <QuestionItem
                 key={`q-${index}-\${item.question?.id || 'no-id'}`}
                 item={item}
-                isSelected={selectedItem === item}
-                onClick={() => {
-                  setSelectedItem(prev => prev === item ? null : item);
+                isExpanded={selectedItem === item}
+                onToggle={() => {
+                  if (selectedItem === item) setSelectedItem(null);
+                  else {
+                    setSelectedItem(item);
+                    if (window.innerWidth <= 900) {
+                      setMobileTab('viewer'); // Auto-switch on mobile when a question is clicked
+                    }
+                  }
                 }}
               />
-            ))}
-
-            {activeTab === 'unmatched' && result.unmatchedAnswers.map((ua, idx) => (
-              <div key={idx} className={styles.unmatchedItem}>
-                <div className={`${styles.badge} ${styles.badgeWarning}`}>⚠ Unmatched Answer</div>
-                <p className={styles.unmatchedText}>&quot;{ua.answerRegion.extractedText}&quot;</p>
-                <p className={styles.unmatchedNote}>{ua.note}</p>
-              </div>
             ))}
           </div>
         </aside>
 
-        {/* Center: Answer Viewer */}
-        <main className={styles.centerPanel}>
-          <div className={styles.panelHeader}>
-            <h2 className={styles.panelTitle}>
-              {selectedItem
-                ? `Answer Sheet — Q${selectedItem.question?.number ?? '?'}`
-                : 'Answer Sheet Viewer'}
-            </h2>
-            {selectedItem && (
-              <button className={`${styles.tab} ${styles.tabActive}`} onClick={() => setSelectedItem(null)}>
-                Clear Selection ✕
-              </button>
-            )}
-          </div>
+        {/* Right: Answer Viewer */}
+        <main className={`${styles.centerPanel} ${mobileTab === 'viewer' ? styles.showOnMobile : styles.hideOnMobile}`}>
           <AnswerViewer
             images={answerImages}
             highlightRegions={highlightRegions}
             totalPages={answerImages.length || result.answerSheetPageCount}
           />
         </main>
-
-        {/* Right: Feedback Panel */}
-        <aside className={styles.rightPanel}>
-          <div className={styles.panelHeader}>
-            <h2 className={styles.panelTitle}>AI Feedback</h2>
-          </div>
-
-          {selectedItem ? (
-            <div className={styles.feedbackPanel}>
-              <div className={styles.feedbackHeader}>
-                <span className={styles.feedbackQNum}>Q{selectedItem.question?.number ?? '?'}</span>
-                <div className={styles.feedbackQText}><Latex>{(selectedItem.question?.text || '').replace(/\\n|\n/g, ' ')}</Latex></div>
-              </div>
-
-              <div className={styles.feedbackScore}>
-                <div>
-                  <p className={styles.feedbackScoreNum}>{selectedItem.marksAwarded}</p>
-                  <p className={styles.feedbackScoreLabel}>of {selectedItem.question?.maxMarks ?? 5} marks</p>
-                </div>
-                <div className={styles.feedbackStatus}>
-                  {selectedItem.status === 'answered' ? (
-                    <span className={`${styles.badge} ${styles.badgeSuccess}`}>✓ Answered</span>
-                  ) : (
-                    <span className={`${styles.badge} ${styles.badgeError}`}>✗ Unanswered</span>
-                  )}
-                </div>
-              </div>
-
-              {selectedItem.answerRegions.length > 0 && (
-                <div className={styles.feedbackAnswerText}>
-                  <p className={styles.feedbackAnswerLabel}>Extracted Answer</p>
-                  <div className={styles.feedbackAnswerContent}>
-                    <Latex>{selectedItem.answerRegions.map(r => r.extractedText).join(' ')}</Latex>
-                  </div>
-                </div>
-              )}
-
-              <div className={styles.feedbackAI}>
-                <p className={styles.feedbackAILabel}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  AI Feedback
-                </p>
-                <div className={styles.feedbackAIText}><Latex>{selectedItem.aiFeedback || ''}</Latex></div>
-              </div>
-            </div>
-          ) : (
-            <div className={styles.feedbackEmpty}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <p>Click a question to see detailed AI feedback</p>
-            </div>
-          )}
-
-          {/* Overall feedback at bottom */}
-          <div className={styles.overallFeedback}>
-            <p className={styles.overallFeedbackLabel}>Overall Assessment</p>
-            <div className={styles.overallFeedbackText}><Latex>{result.overallFeedback || ''}</Latex></div>
-          </div>
-        </aside>
       </div>
     </div>
   );
