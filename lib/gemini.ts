@@ -59,6 +59,33 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ─── JSON Parser Helper ───────────────────────────────────────────────────────
+// Fixes common JSON formatting errors made by AI (like unescaped LaTeX backslashes or raw control chars)
+function parseAIJson<T>(text: string): T {
+  let clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  try {
+    return JSON.parse(clean);
+  } catch (e) {
+    console.warn('[VedaAI] JSON parse failed on first attempt. Attempting sanitization...');
+    // 1. Replace unescaped backslashes for LaTeX (e.g., \frac -> \\frac)
+    // Matches \ not followed by valid JSON escape chars (\, n, r, t, b, f, ")
+    clean = clean.replace(/\\(?![\\nrtbf"])/g, '\\\\');
+    
+    // 2. Remove illegal control characters strictly inside the string (0x00 to 0x1F) except structural newlines/tabs
+    // It's safer to strip bad control chars entirely rather than replacing structural \n.
+    // JSON.parse fails on raw tabs or newlines *inside string values*.
+    // We'll strip raw control characters that aren't structural newlines (\n) or carriage returns (\r).
+    clean = clean.replace(/[\u0000-\u0009\u000B\u000C\u000E-\u001F]+/g, '');
+
+    try {
+      return JSON.parse(clean);
+    } catch (err) {
+      console.error('[VedaAI] FATAL JSON Parse Error. Cleaned text:', clean);
+      throw err;
+    }
+  }
+}
+
 // Tracks daily usage per key — blocks at 20 RPD limit
 function trackUsage(): void {
   const todayUTC = new Date().toISOString().slice(0, 10);
@@ -168,6 +195,7 @@ RULES:
 - If a question provides an internal choice using "OR" / "अथवा" (e.g., "Solve X. OR Solve Y."), treat the entire block as a SINGLE question. Combine both options into the same question text. Do NOT split it into two separate questions.
 - Preserve the ORIGINAL question numbering exactly as printed.
 - INFER THE MARKING SCHEME accurately. Read the instructions at the top (e.g., "Q1-5 carry 1 mark") AND look for marks printed next to questions (e.g., "[5]"). Assign the correct maxMarks to EACH question based on the official scheme. If completely unknown, default to 5.
+- CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\sqrt) and do NOT use unescaped newlines inside string values.
 - ${langInstruction}
 - Return ONLY a valid JSON array. No markdown, no explanation.
 
@@ -201,8 +229,7 @@ The "pageIndex" is the 0-based index of the page image provided (0 for first ima
   const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
 
   // Strip markdown code fences if present
-  const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  return JSON.parse(jsonText) as Question[];
+  return parseAIJson<Question[]>(text);
 }
 
 // ─── STEP 2: Extract answer regions from ALL answer sheet pages in ONE call ────
@@ -215,11 +242,12 @@ Analyse ALL provided answer sheet page images and identify every distinct answer
 
 RULES:
 - Each answer written by the student is a separate region.
-- For each region, provide a normalised bounding box (values between 0.0 and 1.0, relative to that page's dimensions): x (left), y (top), width, height.
+- Identify the bounding box of the answer region relative to the specific page image. Coordinates (x, y, width, height) should be normalized between 0.0 and 1.0.
 - Extract the full handwritten text of each answer (OCR).
-- If the student wrote a question label/number (e.g. "Ans 3", "Q.11a", "11(b)"), capture it in "questionLabel".
+- If the student explicitly wrote a question number (e.g., "Ans 1", "Q. 5(a)"), capture it as "questionLabel". Otherwise, leave it null.
 - pageIndex is 0-based (first page = 0, second = 1, etc.)
-- Return ONLY a valid JSON array covering all pages. No markdown, no explanation.
+- CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\sqrt) and do NOT use unescaped newlines inside string values.
+- Return ONLY a valid JSON array. No markdown, no explanation.
 
 Output JSON format:
 [
@@ -245,10 +273,9 @@ The "id" format: "ar_" + pageIndex + "_" + regionIndex within that page.`;
   console.log(`[VedaAI] Extracting answers from all ${pageImages.length} pages in a single call`);
 
   const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
-  const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 
   try {
-    const regions = JSON.parse(jsonText) as AnswerRegion[];
+    const regions = parseAIJson<AnswerRegion[]>(text);
     // Ensure ids are set correctly
     regions.forEach((r, i) => {
       if (!r.id) r.id = `ar_${r.pageIndex ?? 0}_${i}`;
@@ -282,6 +309,8 @@ Your tasks:
 3. For answer regions that don't match any question, mark them as "unmatched".
 4. Grade each answered question: award marks STRICTLY based on the maxMarks provided in the QUESTION object. Do NOT exceed maxMarks. Award partial marks for partially correct answers. Provide brief feedback.
 5. Provide an overall feedback summary.
+
+CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\sqrt) and do NOT use unescaped newlines inside string values (use \\n instead).
 
 ${langInstruction}
 
@@ -324,7 +353,6 @@ An answer can span multiple pages: answerRegionIds can have multiple entries.`;
     m => m.generateContent(prompt).then(r => r.response.text().trim()),
     getGradingModel  // use minimal-thinking model for faster grading
   );
-  const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 
   interface MappingResult {
     gradedItems: Array<{
@@ -339,7 +367,7 @@ An answer can span multiple pages: answerRegionIds can have multiple entries.`;
     overallFeedback: string;
   }
 
-  const mapping: MappingResult = JSON.parse(jsonText);
+  const mapping = parseAIJson<MappingResult>(text);
 
   // Build lookup maps
   const questionMap = new Map(questions.map(q => [q.id, q]));
