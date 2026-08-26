@@ -2,13 +2,7 @@
 
 // Client-side PDF → Image renderer using PDF.js
 // Each page is rendered to a canvas and converted to a blob URL for display
-
-import * as pdfjs from 'pdfjs-dist';
-
-// Use CDN worker to avoid bundling issues
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-}
+// NOTE: pdfjs-dist is imported dynamically to prevent SSR evaluation errors
 
 /**
  * Renders each page of a PDF file to an image URL (blob URL).
@@ -22,7 +16,13 @@ export async function fileToImageUrls(file: File): Promise<string[]> {
     return [URL.createObjectURL(file)];
   }
 
-  // For PDFs, render each page to a canvas → blob URL
+  // Dynamically import pdfjs-dist — only runs in browser, never on server
+  const pdfjs = await import('pdfjs-dist');
+
+  // Use CDN worker to avoid bundling issues
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+
+  // Render each PDF page to a canvas → blob URL
   const arrayBuffer = await file.arrayBuffer();
   const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
   const pdf = await loadingTask.promise;
