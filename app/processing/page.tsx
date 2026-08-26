@@ -15,7 +15,7 @@ const STEPS: Step[] = [
   { id: 'extracting-questions', label: 'Extracting Questions', description: 'Reading question paper and identifying all questions...', durationMs: 5000 },
   { id: 'extracting-answers', label: 'Extracting Answers', description: 'Analysing handwritten answer sheet with OCR...', durationMs: 15000 },
   { id: 'mapping', label: 'Mapping Answers', description: 'Matching each answer to its corresponding question...', durationMs: 2000 },
-  { id: 'grading', label: 'AI Grading & Feedback', description: 'Evaluating answers... This step takes the longest (approx 20-30s) as the AI reasons through the logic. Intermittent API retries are handled automatically.', durationMs: 30000 },
+  { id: 'grading', label: 'AI Grading & Feedback', description: 'Evaluating answers... This step takes the longest (approx 60-90s) as the AI evaluates 50+ answers in detail. Intermittent API retries are handled automatically.', durationMs: 90000 },
 ];
 
 export default function ProcessingPage() {
