@@ -2,7 +2,7 @@ import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Question, AnswerRegion, GradedItem, UnmatchedAnswer } from './types';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
 // ─── Helper: convert base64 image to Gemini Part ──────────────────────────────
 function imagePart(base64: string, mimeType: string): Part {
