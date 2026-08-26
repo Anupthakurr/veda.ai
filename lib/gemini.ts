@@ -197,7 +197,8 @@ RULES:
 - If a question provides an internal choice using "OR" / "अथवा" (e.g., "Solve X. OR Solve Y."), treat the entire block as a SINGLE question. Combine both options into the same question text. Do NOT split it into two separate questions.
 - Preserve the ORIGINAL question numbering exactly as printed.
 - INFER THE MARKING SCHEME accurately. Read the instructions at the top (e.g., "Q1-5 carry 1 mark") AND look for marks printed next to questions (e.g., "[5]"). Assign the correct maxMarks to EACH question based on the official scheme. If completely unknown, default to 5.
-- CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\sqrt) and do NOT use unescaped newlines inside string values.
+- CRITICAL MATH RULE: All mathematical symbols, variables, or equations MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math. Do not output naked LaTeX commands like \\vec{a}.
+- CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values.
 - ${langInstruction}
 - Return ONLY a valid JSON array. No markdown, no explanation.
 
@@ -248,6 +249,7 @@ RULES:
 - Extract the full handwritten text of each answer (OCR).
 - If the student explicitly wrote a question number (e.g., "Ans 1", "Q. 5(a)"), capture it as "questionLabel". Otherwise, leave it null.
 - pageIndex is 0-based (first page = 0, second = 1, etc.)
+- CRITICAL MATH RULE: All mathematical symbols, variables, or equations MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math. Do not output naked LaTeX commands like \\vec{a}.
 - CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\sqrt) and do NOT use unescaped newlines inside string values.
 - Return ONLY a valid JSON array. No markdown, no explanation.
 
@@ -312,7 +314,8 @@ Your tasks:
 4. Grade each answered question: award marks STRICTLY based on the maxMarks provided in the QUESTION object. Do NOT exceed maxMarks. Award partial marks for partially correct answers. Provide brief feedback.
 5. Provide an overall feedback summary.
 
-CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\sqrt) and do NOT use unescaped newlines inside string values (use \\n instead).
+CRITICAL MATH RULE: All mathematical symbols, variables, or equations in your feedback MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math.
+CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values (use \\n instead).
 
 ${langInstruction}
 
