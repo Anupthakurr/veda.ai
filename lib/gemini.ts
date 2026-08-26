@@ -195,8 +195,8 @@ Analyse the provided question paper page images and extract ALL questions in the
 RULES:
 - EXTRACT EVERY SINGLE QUESTION. Do not skip, omit, or summarize any questions. You must comprehensively capture the entire paper.
 - IGNORE general instructions (e.g., "Attempt all questions", "Section A", "Time: 3 hours"). Only extract actual questions that require an answer.
-- Treat each labelled sub-part as a SEPARATE question. E.g. "11(a)" and "11(b)" are two separate entries.
-- CRITICAL RULE FOR "OR" QUESTIONS: When a question has an internal choice (e.g., separated by "OR" or "अथवा"), YOU MUST ABSOLUTELY MERGE BOTH OPTIONS into a SINGLE question entry in the JSON. Never create two separate JSON objects for an OR choice. Example: If Q5 is "Option A OR Option B", create exactly ONE JSON object for Q5 containing both options in the "text" field.
+- NORMAL SUB-PARTS: If a question has labelled sub-parts (e.g., (a), (b), (c)) with NO "OR" between them, extract each sub-part as a SEPARATE question (e.g., 3 separate JSON entries).
+- CRITICAL RULE FOR "OR" CHOICES: If sub-parts or whole questions are separated by "OR" / "अथवा" (e.g., "21(a) ... OR (b) ..."), YOU MUST MERGE BOTH OPTIONS into a SINGLE question entry in the JSON. NEVER split an "OR" choice into multiple JSON objects.
 - Preserve the ORIGINAL question numbering exactly as printed.
 - INFER THE MARKING SCHEME accurately. Read the instructions at the top (e.g., "Q1-5 carry 1 mark") AND look for marks printed next to questions (e.g., "[5]"). Assign the correct maxMarks to EACH question based on the official scheme. If completely unknown, default to 5.
 - CRITICAL MATH RULE: All mathematical symbols, variables, or equations MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math. Do not output naked LaTeX commands like \\vec{a}.
