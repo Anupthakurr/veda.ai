@@ -122,6 +122,7 @@ function AnswerViewer({
   const [currentPage, setCurrentPage] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-jump to the correct page when a question is selected
   useEffect(() => {
@@ -129,6 +130,20 @@ function AnswerViewer({
       const targetPage = highlightRegions[0].pageIndex;
       if (targetPage >= 0 && targetPage < totalPages) {
         setCurrentPage(targetPage);
+        
+        // Auto-scroll to the top of the first bounding box
+        setTimeout(() => {
+          if (scrollContainerRef.current && imgRef.current) {
+            const firstRegion = highlightRegions[0];
+            // Calculate pixel Y offset based on the image's current rendered height
+            const yOffset = firstRegion.boundingBox.y * imgRef.current.clientHeight;
+            // Scroll to the y position, minus a little padding so it's not strictly at the top edge
+            scrollContainerRef.current.scrollTo({
+              top: Math.max(0, yOffset - 50),
+              behavior: 'smooth'
+            });
+          }
+        }, 50); // small delay to allow image/page render
       }
     }
   }, [highlightRegions, totalPages]);
@@ -204,7 +219,7 @@ function AnswerViewer({
       )}
 
       {/* Image + canvas overlay */}
-      <div className={styles.imageContainer}>
+      <div className={styles.imageContainer} ref={scrollContainerRef}>
         {currentImageSrc ? (
           <div className={styles.imageWrapper}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
