@@ -53,6 +53,13 @@ export async function POST(request: NextRequest) {
     const questionImages = await processFiles(questionFiles);
     const questions = await extractQuestions(questionImages, language);
 
+    if (!questions || questions.length === 0) {
+      return NextResponse.json(
+        { error: 'Failed to extract any questions from the provided paper. This might be due to unclear images or AI rate-limiting. Please try again.' },
+        { status: 400 }
+      );
+    }
+
     // Step 2: Extract answers
     const answerImages = await processFiles(answerFiles);
     const answerRegions = await extractAnswers(answerImages);

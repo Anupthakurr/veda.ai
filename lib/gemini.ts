@@ -184,8 +184,8 @@ export async function extractQuestions(
   language: string = 'auto'
 ): Promise<Question[]> {
   let langInstruction = '';
-  if (language === 'english') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST extract the questions strictly in ENGLISH. Completely ignore any Hindi translations printed on the paper.';
-  else if (language === 'hindi') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST extract the questions strictly in HINDI. Completely ignore any English translations printed on the paper.';
+  if (language === 'english') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST extract the questions in ENGLISH. If the paper is written in another language (e.g. Hindi), TRANSLATE the questions into English.';
+  else if (language === 'hindi') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST extract the questions in HINDI. If the paper is written in another language (e.g. English), TRANSLATE the questions into Hindi.';
   else langInstruction = 'Extract the questions in the language they are written.';
 
   const prompt = `You are an expert at analysing question papers.
