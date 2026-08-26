@@ -189,6 +189,7 @@ export async function extractQuestions(
   else langInstruction = 'Extract the questions in the language they are written.';
 
   const prompt = `You are an expert at analysing question papers.
+${langInstruction}
 
 Analyse the provided question paper page images and extract ALL questions in the exact printed order.
 
@@ -201,7 +202,6 @@ RULES:
 - INFER THE MARKING SCHEME accurately. Read the instructions at the top (e.g., "Q1-5 carry 1 mark") AND look for marks printed next to questions (e.g., "[5]"). Assign the correct maxMarks to EACH question based on the official scheme. If completely unknown, default to 5.
 - CRITICAL MATH RULE: All mathematical symbols, variables, or equations MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math. Do not output naked LaTeX commands like \\vec{a}.
 - CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values.
-- ${langInstruction}
 - Return ONLY a valid JSON array. No markdown, no explanation.
 
 Output JSON format:
@@ -306,30 +306,29 @@ export async function mapAndGrade(
   else langInstruction = 'Write your feedback in the same language that the question paper and student answers are written in.';
 
   const prompt = `You are an expert teacher and grader.
+${langInstruction}
 
-You have a list of QUESTIONS from a question paper and a list of ANSWER REGIONS extracted from a student's answer sheet.
+You will be given:
+1. A list of officially extracted questions from a question paper, including their max marks.
+2. A list of extracted handwritten answer regions from a student's answer sheet.
 
-Your tasks:
-1. Match each answer region to the correct question (students may answer out of order).
-2. For questions with no matching answer, mark them as "unanswered".
-3. For answer regions that don't match any question, mark them as "unmatched".
+TASKS:
+1. Map each handwritten answer region to the exact corresponding question. Pay close attention to question numbers written by the student (e.g., "Ans 1", "Q. 5(a)").
+2. If an answer cannot be mapped to any question, mark it as unmatched.
+3. If a question was not answered by the student, mark it as unanswered.
 4. Grade each answered question: award marks STRICTLY based on the maxMarks provided in the QUESTION object. Do NOT exceed maxMarks. Award partial marks for partially correct answers. Provide brief feedback.
 5. Provide an overall feedback summary.
 
 CRITICAL MATH RULE: All mathematical symbols, variables, or equations in your feedback MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math.
 CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values (use \\n instead).
 
-${langInstruction}
-
 QUESTIONS:
-${JSON.stringify(questions, null, 2)}
+\${JSON.stringify(questions, null, 2)}
 
 ANSWER REGIONS:
-${JSON.stringify(answerRegions, null, 2)}
+\${JSON.stringify(answerRegions, null, 2)}
 
-Return ONLY a valid JSON object. No markdown, no explanation.
-
-Output JSON format:
+Return ONLY a valid JSON object in this format:
 {
   "gradedItems": [
     {
