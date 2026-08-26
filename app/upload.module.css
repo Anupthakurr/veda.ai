@@ -1,0 +1,319 @@
+.page {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.navBadge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+}
+
+/* ─── Hero ────────────────────────────────────────────────────────── */
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 60px 24px 80px;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 56px;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-border);
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.heroTitle {
+  font-size: 52px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+}
+
+.heroAccent {
+  color: var(--color-primary);
+}
+
+.heroSubtitle {
+  font-size: 17px;
+  color: var(--color-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ─── Upload Section ──────────────────────────────────────────────── */
+.uploadSection {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  padding: 40px;
+  animation: fadeIn 0.5s ease 0.1s both;
+}
+
+.uploadGrid {
+  display: grid;
+  grid-template-columns: 1fr 40px 1fr;
+  gap: 0;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+/* ─── Upload Zone ────────────────────────────────────────────────── */
+.uploadZone {
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: var(--color-surface-2);
+  min-height: 260px;
+  justify-content: center;
+}
+
+.uploadZone:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.dragging {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+  transform: scale(1.01);
+  box-shadow: 0 0 0 4px rgba(240, 90, 40, 0.1);
+}
+
+.hasFiles {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+  border-style: solid;
+}
+
+.hasFiles:hover {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.zoneIcon {
+  color: var(--color-primary);
+  margin-bottom: 4px;
+}
+
+.zoneLabel {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.zoneDesc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.browseBtn {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 8px 20px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all var(--transition);
+}
+
+.uploadZone:hover .browseBtn {
+  background: var(--color-primary-dark);
+}
+
+.zoneAccept {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-top: 4px;
+}
+
+/* ─── File List State ────────────────────────────────────────────── */
+.fileList {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.fileIcon {
+  color: var(--color-success);
+  width: 48px;
+  height: 48px;
+  background: var(--color-success-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.fileLabel {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.fileNames {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.fileName {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.changeHint {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+/* ─── Divider ────────────────────────────────────────────────────── */
+.divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+}
+
+.dividerLine {
+  flex: 1;
+  width: 1px;
+  background: var(--color-border);
+  min-height: 40px;
+}
+
+.dividerText {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+/* ─── Action Row ─────────────────────────────────────────────────── */
+.actionRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.actionHint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+/* ─── Error ──────────────────────────────────────────────────────── */
+.errorBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+/* ─── Features ───────────────────────────────────────────────────── */
+.features {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 40px;
+  animation: fadeIn 0.5s ease 0.2s both;
+}
+
+.featurePill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.featurePill:hover {
+  border-color: var(--color-primary-border);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .heroTitle {
+    font-size: 36px;
+  }
+
+  .uploadGrid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 16px;
+  }
+
+  .divider {
+    flex-direction: row;
+    padding: 0;
+  }
+
+  .dividerLine {
+    width: 100%;
+    height: 1px;
+    min-height: unset;
+  }
+
+  .uploadSection {
+    padding: 24px 16px;
+  }
+}
