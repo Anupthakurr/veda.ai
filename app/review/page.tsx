@@ -374,7 +374,7 @@ export default function ReviewPage() {
           <AnswerViewer
             images={answerImages}
             highlightRegions={highlightRegions}
-            totalPages={result.answerSheetPageCount}
+            totalPages={answerImages.length || result.answerSheetPageCount}
           />
         </main>
 

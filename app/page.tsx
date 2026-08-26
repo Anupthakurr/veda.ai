@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { fileToImageUrls } from '@/lib/pdfRenderer';
 import styles from './upload.module.css';
 
 interface UploadZoneProps {
@@ -102,10 +103,15 @@ export default function UploadPage() {
       sessionStorage.setItem('questionFileInfo', JSON.stringify(questionFileInfo));
       sessionStorage.setItem('answerFileInfo', JSON.stringify(answerFileInfo));
 
-      // Store answer sheet files as Object URLs in window global (NOT sessionStorage)
-      // Object URLs are just tiny pointers — no quota issues, survive client-side navigation
-      const answerObjectURLs = answerFiles.map(f => URL.createObjectURL(f));
-      (window as unknown as { __answerSheetURLs?: string[] }).__answerSheetURLs = answerObjectURLs;
+      // Render answer sheet files to displayable image URLs
+      // - For images (JPG/PNG): returns a single Object URL
+      // - For PDFs: renders each page to a canvas → blob URL via PDF.js
+      const allImageUrls: string[] = [];
+      for (const file of answerFiles) {
+        const urls = await fileToImageUrls(file);
+        allImageUrls.push(...urls);
+      }
+      (window as unknown as { __answerSheetURLs?: string[] }).__answerSheetURLs = allImageUrls;
 
       // Store form data in window global for the processing page to send to API
       (window as unknown as { __analysisFormData?: FormData }).__analysisFormData = formData;
@@ -205,7 +211,7 @@ export default function UploadPage() {
               {isProcessing ? (
                 <>
                   <div className="spinner" />
-                  Starting Analysis...
+                  Preparing files...
                 </>
               ) : (
                 <>
