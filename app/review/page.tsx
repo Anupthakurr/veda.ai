@@ -141,14 +141,28 @@ function AnswerViewer({
     canvas.height = img.naturalHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const pageRegions = highlightRegions.filter(r => r.pageIndex === currentPage);
+    const pageRegions = highlightRegions.filter(r => (r.pageIndex ?? 0) === currentPage);
 
     pageRegions.forEach(region => {
-      const { x, y, width, height } = region.boundingBox;
-      const px = x * canvas.width;
-      const py = y * canvas.height;
-      const pw = width * canvas.width;
-      const ph = height * canvas.height;
+      if (!region || !region.boundingBox) return;
+      
+      let bx = Number(region.boundingBox.x || 0);
+      let by = Number(region.boundingBox.y || 0);
+      let bw = Number(region.boundingBox.width || 0.5);
+      let bh = Number(region.boundingBox.height || 0.5);
+
+      // If coordinates are > 1, assume they are absolute pixels and normalize them
+      if (bw > 2 || bh > 2 || bx > 2 || by > 2) {
+        bx = bx / canvas.width;
+        by = by / canvas.height;
+        bw = bw / canvas.width;
+        bh = bh / canvas.height;
+      }
+
+      const px = bx * canvas.width;
+      const py = by * canvas.height;
+      const pw = bw * canvas.width;
+      const ph = bh * canvas.height;
 
       // Green Highlight fill
       ctx.fillStyle = 'rgba(74, 222, 128, 0.15)'; // Light green tint
@@ -156,16 +170,13 @@ function AnswerViewer({
 
       // Solid Green Border
       ctx.strokeStyle = '#4ADE80'; // Green-400
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 3;
       ctx.strokeRect(px, py, pw, ph);
 
       // Top-left corner label (Q2 etc)
       const labelText = region.questionLabel ? `Q${region.questionLabel}` : 'Ans';
       ctx.fillStyle = '#4ADE80';
-      ctx.beginPath();
-      // Draw rounded tab
-      ctx.roundRect(px, py - 28, 48, 28, [8, 8, 0, 0]);
-      ctx.fill();
+      ctx.fillRect(px, py - 24, 54, 24);
       
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 16px Inter, sans-serif';
@@ -175,8 +186,8 @@ function AnswerViewer({
 
   // Auto-jump to the correct page when a question is selected
   useEffect(() => {
-    if (highlightRegions.length > 0 && highlightRegions[0].pageIndex !== undefined) {
-      const targetPage = highlightRegions[0].pageIndex;
+    if (highlightRegions.length > 0) {
+      const targetPage = highlightRegions[0].pageIndex ?? 0;
       if (targetPage >= 0 && targetPage < totalPages) {
         setCurrentPage(targetPage);
         
@@ -250,9 +261,7 @@ function AnswerViewer({
               ref={imgRef}
               onLoad={drawHighlights}
             />
-            {hasHighlightsOnPage && (
-              <canvas ref={canvasRef} className={styles.highlightCanvas} />
-            )}
+            <canvas ref={canvasRef} className={styles.highlightCanvas} />
           </div>
         ) : (
           <div className={styles.noImage}>

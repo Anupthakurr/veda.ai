@@ -28,8 +28,8 @@ let currentKeyIndex = 0;
 
 // Per-key daily request counter (resets at midnight UTC)
 const dailyUsage: Record<number, { count: number; date: string }> = {};
-const RPD_LIMIT = 20;
-const RPD_WARN_AT = 16; // warn at 80% of daily limit
+const RPD_LIMIT = 500;
+const RPD_WARN_AT = 450; // warn at 90% of daily limit
 
 
 // Fast model — thinking DISABLED (extraction calls don't need deep reasoning)
@@ -318,9 +318,11 @@ The "id" format: "ar_" + pageIndex + "_" + regionIndex within that page.`;
     try {
       const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
       const regions = parseAIJson<AnswerRegion[]>(text);
-      // Ensure ids are set correctly and decode space replacement
       regions.forEach((r, idx) => {
-        if (!r.id) r.id = `ar_${r.pageIndex ?? 0}_${idx}`;
+        if (r.pageIndex === undefined || r.pageIndex === null) {
+          r.pageIndex = i; // fallback to current batch start page index (or better, globalIdx if we tracked it per image, but this is a close approximation since the prompt passes the exact pageIndex)
+        }
+        if (!r.id) r.id = `ar_${r.pageIndex}_${idx}`;
         if (r.extractedText) r.extractedText = r.extractedText.replace(/QQQ/g, ' ').trim();
       });
       allRegions.push(...regions);
