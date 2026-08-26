@@ -1,8 +1,58 @@
 import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Question, AnswerRegion, GradedItem, UnmatchedAnswer } from './types';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+// ─── Multi-key rotator ────────────────────────────────────────────────────────
+// Add GEMINI_API_KEY_2, GEMINI_API_KEY_3, etc. in .env.local for rotation
+function getApiKeys(): string[] {
+  const keys: string[] = [];
+  // Primary key
+  if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
+  // Additional keys: GEMINI_API_KEY_2, GEMINI_API_KEY_3, ...
+  let i = 2;
+  while (process.env[`GEMINI_API_KEY_${i}`]) {
+    keys.push(process.env[`GEMINI_API_KEY_${i}`]!);
+    i++;
+  }
+  if (keys.length === 0) throw new Error('No GEMINI_API_KEY found in environment variables.');
+  return keys;
+}
+
+const API_KEYS = getApiKeys();
+let currentKeyIndex = 0;
+
+function getModel() {
+  const key = API_KEYS[currentKeyIndex];
+  const genAI = new GoogleGenerativeAI(key);
+  return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+}
+
+// Call Gemini with automatic key rotation on rate limit errors
+async function callWithRotation(
+  fn: (model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>) => Promise<string>
+): Promise<string> {
+  const startIndex = currentKeyIndex;
+  do {
+    try {
+      const result = await fn(getModel());
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const isRateLimit = message.includes('429') || message.toLowerCase().includes('quota') || message.toLowerCase().includes('rate');
+      if (isRateLimit && API_KEYS.length > 1) {
+        // Rotate to next key
+        currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
+        console.warn(`[Gemini] Rate limit hit — rotating to key ${currentKeyIndex + 1}/${API_KEYS.length}`);
+        if (currentKeyIndex === startIndex) {
+          // All keys exhausted
+          throw new Error('All Gemini API keys have hit their rate limit. Please wait and try again.');
+        }
+      } else {
+        throw err;
+      }
+    }
+  } while (true);
+}
+
 
 // ─── Helper: convert base64 image to Gemini Part ──────────────────────────────
 function imagePart(base64: string, mimeType: string): Part {
@@ -55,8 +105,7 @@ The "pageIndex" is the 0-based index of the page image provided (0 for first ima
     parts.push(imagePart(base64, mimeType));
   });
 
-  const result = await model.generateContent(parts);
-  const text = result.response.text().trim();
+  const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
 
   // Strip markdown code fences if present
   const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -102,8 +151,7 @@ Ensure bounding boxes tightly surround the actual handwritten answer content.`;
       imagePart(base64, mimeType),
     ];
 
-    const result = await model.generateContent(parts);
-    const text = result.response.text().trim();
+    const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
     const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 
     try {
@@ -173,8 +221,7 @@ Output JSON format:
 Status values: "answered" | "unanswered" | "unmatched"
 An answer can span multiple pages: answerRegionIds can have multiple entries.`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
+  const text = await callWithRotation(m => m.generateContent(prompt).then(r => r.response.text().trim()));
   const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 
   interface MappingResult {
