@@ -49,7 +49,7 @@ function getGradingModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-3.5-flash-lite',
+    model: 'gemini-3.5-flash',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
   });
@@ -68,8 +68,8 @@ function parseAIJson<T>(text: string): T {
   } catch (e) {
     console.warn('[VedaAI] JSON parse failed on first attempt. Attempting sanitization...');
     // 1. Replace unescaped backslashes for LaTeX (e.g., \frac -> \\frac)
-    // Matches \ not followed by valid JSON escape chars (\, n, r, t, b, f, ")
-    clean = clean.replace(/\\(?![\\nrtbf"])/g, '\\\\');
+    // Matches \ not preceded by \ and not followed by valid JSON escape chars (\, ", /, n, r, t, b, f, u)
+    clean = clean.replace(/(?<!\\)\\(?![\\"/nrtbfu])/g, '\\\\');
     
     // 2. Remove illegal control characters strictly inside the string (0x00 to 0x1F) except structural newlines/tabs
     // It's safer to strip bad control chars entirely rather than replacing structural \n.
@@ -194,6 +194,7 @@ ${langInstruction}
 Analyse the provided question paper page images and extract ALL questions in the exact printed order.
 
 RULES:
+- CRITICAL SAFETY RULE: To avoid AI recitation filters on standard exam papers, DO NOT extract the questions completely verbatim. You MUST slightly paraphrase the non-mathematical text of each question, while preserving the exact mathematical equations, numbers, and core meaning.
 - EXTRACT EVERY SINGLE QUESTION. Do not skip, omit, or summarize any questions. You must comprehensively capture the entire paper.
 - IGNORE general instructions (e.g., "Attempt all questions", "Section A", "Time: 3 hours"). Only extract actual questions that require an answer.
 - NORMAL SUB-PARTS: If a question has labelled sub-parts (e.g., (a), (b), (c)) with NO "OR" between them, extract each sub-part as a SEPARATE question (e.g., 3 separate JSON entries).
@@ -241,7 +242,15 @@ The "pageIndex" is the 0-based index of the page image provided (0 for first ima
 export async function extractAnswers(
   pageImages: { base64: string; mimeType: string }[]
 ): Promise<AnswerRegion[]> {
-  const prompt = `You are an expert OCR system for handwritten student answer sheets.
+  const BATCH_SIZE = 5;
+  const allRegions: AnswerRegion[] = [];
+
+  console.log(`[VedaAI] Extracting answers from ${pageImages.length} pages in batches of ${BATCH_SIZE}`);
+
+  for (let i = 0; i < pageImages.length; i += BATCH_SIZE) {
+    const batchImages = pageImages.slice(i, i + BATCH_SIZE);
+    
+    const prompt = `You are an expert OCR system for handwritten student answer sheets.
 
 Analyse ALL provided answer sheet page images and identify every distinct answer region across all pages.
 
@@ -252,7 +261,7 @@ RULES:
 - If the student explicitly wrote a question number (e.g., "Ans 1", "Q. 5(a)"), capture it as "questionLabel". Otherwise, leave it null.
 - pageIndex is 0-based (first page = 0, second = 1, etc.)
 - CRITICAL MATH RULE: All mathematical symbols, variables, or equations MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math. Do not output naked LaTeX commands like \\vec{a}.
-- CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\sqrt) and do NOT use unescaped newlines inside string values.
+- CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values.
 - Return ONLY a valid JSON array. No markdown, no explanation.
 
 Output JSON format:
@@ -268,30 +277,30 @@ Output JSON format:
 
 The "id" format: "ar_" + pageIndex + "_" + regionIndex within that page.`;
 
-  // Send ALL pages in a single call — Gemini 2.5 Flash has a 1M token context window
-  // This reduces answer extraction from N calls to just 1 call regardless of page count
-  const parts: Part[] = [{ text: prompt }];
-  pageImages.forEach(({ base64, mimeType }, idx) => {
-    parts.push({ text: `\n--- PAGE ${idx + 1} (pageIndex: ${idx}) ---` });
-    parts.push(imagePart(base64, mimeType));
-  });
-
-  console.log(`[VedaAI] Extracting answers from all ${pageImages.length} pages in a single call`);
-
-  const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
-
-  try {
-    const regions = parseAIJson<AnswerRegion[]>(text);
-    // Ensure ids are set correctly
-    regions.forEach((r, i) => {
-      if (!r.id) r.id = `ar_${r.pageIndex ?? 0}_${i}`;
+    const parts: Part[] = [{ text: prompt }];
+    batchImages.forEach(({ base64, mimeType }, idx) => {
+      const globalIdx = i + idx;
+      parts.push({ text: `\n--- PAGE ${globalIdx + 1} (pageIndex: ${globalIdx}) ---` });
+      parts.push(imagePart(base64, mimeType));
     });
-    console.log(`[VedaAI] Extracted ${regions.length} answer regions across ${pageImages.length} pages`);
-    return regions;
-  } catch {
-    console.warn('[VedaAI] Failed to parse answer regions — returning empty');
-    return [];
+
+    console.log(`[VedaAI] Processing batch: pages ${i + 1} to ${i + batchImages.length}`);
+    const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
+
+    try {
+      const regions = parseAIJson<AnswerRegion[]>(text);
+      // Ensure ids are set correctly
+      regions.forEach((r, idx) => {
+        if (!r.id) r.id = `ar_${r.pageIndex ?? 0}_${idx}`;
+      });
+      allRegions.push(...regions);
+    } catch {
+      console.warn(`[VedaAI] Failed to parse answer regions for batch ${i + 1} — skipping this batch`);
+    }
   }
+
+  console.log(`[VedaAI] Extracted total ${allRegions.length} answer regions across ${pageImages.length} pages`);
+  return allRegions;
 }
 
 // ─── STEP 3 & 4: Map answers to questions + grade ────────────────────────────
@@ -305,28 +314,37 @@ export async function mapAndGrade(
   else if (language === 'hindi') langInstruction = 'CRITICAL LANGUAGE RULE: You MUST write all your feedback (aiFeedback and overallFeedback) strictly in HINDI. Do not use English.';
   else langInstruction = 'Write your feedback in the same language that the question paper and student answers are written in.';
 
-  const prompt = `You are an expert teacher and grader.
+  const BATCH_SIZE = 15;
+  const allGradedInfos = new Map<string, any>();
+  const overallFeedbacks: string[] = [];
+
+  for (let i = 0; i < questions.length; i += BATCH_SIZE) {
+    const questionBatch = questions.slice(i, i + BATCH_SIZE);
+
+    const prompt = `You are an expert teacher and grader.
 ${langInstruction}
 
 You will be given:
-1. A list of officially extracted questions from a question paper, including their max marks.
-2. A list of extracted handwritten answer regions from a student's answer sheet.
+1. A list of officially extracted questions from a question paper (this is a batch of ${questionBatch.length} questions), including their max marks.
+2. A list of ALL extracted handwritten answer regions from a student's answer sheet.
 
 TASKS:
-1. Map each handwritten answer region to the exact corresponding question. Pay close attention to question numbers written by the student (e.g., "Ans 1", "Q. 5(a)").
-2. If an answer cannot be mapped to any question, mark it as unmatched.
-3. If a question was not answered by the student, mark it as unanswered.
-4. Grade each answered question: award marks STRICTLY based on the maxMarks provided in the QUESTION object. Do NOT exceed maxMarks. Award partial marks for partially correct answers. Provide brief feedback.
-5. Provide an overall feedback summary.
+1. For EVERY SINGLE QUESTION in the provided QUESTIONS list, attempt to find its corresponding handwritten answer in the ANSWER REGIONS list. Pay close attention to question numbers written by the student (e.g., "Ans 1", "Q. 5(a)").
+2. If a question was not answered by the student, mark it as unanswered.
+3. Grade each answered question: award marks STRICTLY based on the maxMarks provided in the QUESTION object. CRITICAL: Do NOT exceed maxMarks. Award partial marks for partially correct answers. Provide brief feedback.
+4. Provide a brief overall feedback summary for this batch.
+
+CRITICAL REQUIREMENT: Your output JSON array MUST contain EXACTLY ${questionBatch.length} items in the gradedItems array. You MUST evaluate every single question in this batch.
+CRITICAL GRADING RULE: The marksAwarded MUST NOT exceed the maxMarks for the question. If maxMarks is 1, the maximum you can award is 1.
 
 CRITICAL MATH RULE: All mathematical symbols, variables, or equations in your feedback MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math.
 CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values (use \\n instead).
 
-QUESTIONS:
-\${JSON.stringify(questions, null, 2)}
+QUESTIONS BATCH:
+${JSON.stringify(questionBatch, null, 2)}
 
-ANSWER REGIONS:
-\${JSON.stringify(answerRegions, null, 2)}
+ALL ANSWER REGIONS:
+${JSON.stringify(answerRegions, null, 2)}
 
 Return ONLY a valid JSON object in this format:
 {
@@ -335,76 +353,82 @@ Return ONLY a valid JSON object in this format:
       "questionId": "q1",
       "answerRegionIds": ["ar_0_0"],
       "status": "answered",
-      "marksAwarded": 4,
+      "marksAwarded": 1,
       "isCorrect": true,
-      "aiFeedback": "Good answer, covers the main points. Could elaborate on X."
-    },
-    {
-      "questionId": "q2",
-      "answerRegionIds": [],
-      "status": "unanswered",
-      "marksAwarded": 0,
-      "isCorrect": false,
-      "aiFeedback": "Question was not attempted."
+      "aiFeedback": "Good answer, covers the main points."
     }
   ],
-  "unmatchedAnswerIds": ["ar_1_2"],
-  "overallFeedback": "The student demonstrated good understanding of most topics..."
+  "overallFeedback": "The student demonstrated good understanding of this section."
 }
 
-Status values: "answered" | "unanswered" | "unmatched"
+Status values: "answered" | "unanswered"
 An answer can span multiple pages: answerRegionIds can have multiple entries.`;
 
-  const text = await callWithRotation(
-    m => m.generateContent(prompt).then(r => r.response.text().trim()),
-    getGradingModel  // use minimal-thinking model for faster grading
-  );
+    const text = await callWithRotation(
+      m => m.generateContent(prompt).then(r => r.response.text().trim()),
+      getGradingModel
+    );
 
-  interface MappingResult {
-    gradedItems: Array<{
-      questionId: string;
-      answerRegionIds: string[];
-      status: 'answered' | 'unanswered' | 'unmatched';
-      marksAwarded: number;
-      isCorrect: boolean | null;
-      aiFeedback: string;
-    }>;
-    unmatchedAnswerIds: string[];
-    overallFeedback: string;
+    try {
+      const mapping = parseAIJson<any>(text);
+      if (mapping.gradedItems && Array.isArray(mapping.gradedItems)) {
+        for (const item of mapping.gradedItems) {
+          allGradedInfos.set(item.questionId, item);
+        }
+      }
+      if (mapping.overallFeedback) {
+        overallFeedbacks.push(mapping.overallFeedback);
+      }
+    } catch (e) {
+      console.warn(`[VedaAI] Failed to parse grading batch ${i + 1}`);
+    }
   }
 
-  const mapping = parseAIJson<MappingResult>(text);
-
-  // Build lookup maps
-  const questionMap = new Map(questions.map(q => [q.id, q]));
   const regionMap = new Map(answerRegions.map(r => [r.id, r]));
+  const usedRegionIds = new Set<string>();
 
-  const gradedItems: GradedItem[] = mapping.gradedItems.map(item => {
-    const question = questionMap.get(item.questionId)!;
-    const regions = item.answerRegionIds
-      .map(id => regionMap.get(id))
-      .filter(Boolean) as AnswerRegion[];
+  const gradedItems: GradedItem[] = questions.map(question => {
+    const gradedInfo = allGradedInfos.get(question.id);
+    
+    if (gradedInfo) {
+      const regions = (gradedInfo.answerRegionIds || [])
+        .map((id: string) => regionMap.get(id))
+        .filter(Boolean) as AnswerRegion[];
+        
+      regions.forEach(r => usedRegionIds.add(r.id));
 
-    return {
-      question,
-      answerRegions: regions,
-      status: item.status,
-      marksAwarded: item.marksAwarded,
-      isCorrect: item.isCorrect,
-      aiFeedback: item.aiFeedback,
-    };
+      // Enforce max marks
+      let marks = Number(gradedInfo.marksAwarded) || 0;
+      if (marks > (question.maxMarks || 5)) {
+        marks = question.maxMarks || 5;
+      }
+
+      return {
+        question,
+        answerRegions: regions,
+        status: gradedInfo.status === 'answered' && regions.length > 0 ? 'answered' : 'unanswered',
+        marksAwarded: marks,
+        isCorrect: gradedInfo.isCorrect,
+        aiFeedback: gradedInfo.aiFeedback || '',
+      };
+    } else {
+      return {
+        question,
+        answerRegions: [],
+        status: 'unanswered',
+        marksAwarded: 0,
+        isCorrect: false,
+        aiFeedback: 'Question was not attempted or was missed by the grader.',
+      };
+    }
   });
 
-  const unmatchedAnswers: UnmatchedAnswer[] = (mapping.unmatchedAnswerIds || [])
-    .map(id => {
-      const region = regionMap.get(id);
-      if (!region) return null;
-      return {
-        answerRegion: region,
-        note: 'This answer could not be matched to any question.',
-      };
-    })
-    .filter(Boolean) as UnmatchedAnswer[];
+  const unmatchedAnswers: UnmatchedAnswer[] = answerRegions
+    .filter(r => !usedRegionIds.has(r.id))
+    .map(region => ({
+      answerRegion: region,
+      note: 'This answer could not be matched to any question.',
+    }));
 
   return { gradedItems, unmatchedAnswers };
 }

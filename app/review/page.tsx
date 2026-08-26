@@ -389,7 +389,7 @@ export default function ReviewPage() {
           <div className={styles.panelHeader}>
             <h2 className={styles.panelTitle}>
               {selectedItem
-                ? `Answer Sheet — Q${selectedItem.question?.number}`
+                ? `Answer Sheet — Q${selectedItem.question?.number ?? '?'}`
                 : 'Answer Sheet Viewer'}
             </h2>
             {selectedItem && (
@@ -414,7 +414,7 @@ export default function ReviewPage() {
           {selectedItem ? (
             <div className={styles.feedbackPanel}>
               <div className={styles.feedbackHeader}>
-                <span className={styles.feedbackQNum}>Q{selectedItem.question?.number}</span>
+                <span className={styles.feedbackQNum}>Q{selectedItem.question?.number ?? '?'}</span>
                 <div className={styles.feedbackQText}><Latex>{selectedItem.question?.text || ''}</Latex></div>
               </div>
 

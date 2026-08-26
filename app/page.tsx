@@ -104,6 +104,7 @@ export default function UploadPage() {
       // This reduces payload from ~17 MB (raw PDFs) to ~2 MB (compressed JPEGs)
       // staying well under Vercel's 4.5 MB serverless body limit
       const formData = new FormData();
+      formData.append('language', language);
 
       // Question paper → compressed blobs for API
       for (const file of questionFiles) {
