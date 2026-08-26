@@ -215,22 +215,20 @@ export default function UploadPage() {
           )}
 
           <div className={styles.actionRow}>
-            {canAnalyze && (
-              <div className={styles.languageSelectWrapper}>
-                <label htmlFor="language" className={styles.languageLabel}>Preferred Output Language</label>
-                <select 
-                  id="language"
-                  className={styles.languageSelect}
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  disabled={isProcessing}
-                >
-                  <option value="auto">Auto-detect (Mixed)</option>
-                  <option value="english">English Only</option>
-                  <option value="hindi">Hindi Only</option>
-                </select>
-              </div>
-            )}
+            <div className={styles.languageSelectWrapper}>
+              <label htmlFor="language" className={styles.languageLabel}>Preferred Output Language</label>
+              <select 
+                id="language"
+                className={styles.languageSelect}
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                disabled={isProcessing}
+              >
+                <option value="auto">Auto-detect (Mixed)</option>
+                <option value="english">English Only</option>
+                <option value="hindi">Hindi Only</option>
+              </select>
+            </div>
 
             <button
               className="btn btn-primary btn-lg"
