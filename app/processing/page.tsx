@@ -125,116 +125,46 @@ export default function ProcessingPage() {
       </nav>
 
       <main className={styles.main}>
-        <div className={styles.card}>
-          {/* Header */}
-          <div className={styles.header}>
-            <div className={styles.headerIcon}>
-              {isDone ? (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              ) : (
-                <div className={styles.pulseRing}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              )}
-            </div>
-            <h1 className={styles.title}>
-              {error ? 'Analysis Failed' : isDone ? 'Analysis Complete!' : 'Analysing Assessment'}
-            </h1>
-            <p className={styles.subtitle}>
-              {error
-                ? error
-                : isDone
-                ? 'Redirecting to results...'
-                : 'Our AI is processing your files. This may take a moment.'}
-            </p>
-          </div>
-
-          {/* File info */}
-          <div className={styles.fileInfo}>
-            <div className={styles.fileCard}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
+        <div className={styles.minimalContainer}>
+          {error ? (
+            <>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 24 }}>
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
-              <div>
-                <p className={styles.fileCardLabel}>Question Paper</p>
-                {questionFiles.map((f, i) => (
-                  <p key={i} className={styles.fileCardName}>{f.name} <span>({formatSize(f.size)})</span></p>
-                ))}
-              </div>
-            </div>
-            <div className={styles.fileCard}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <div>
-                <p className={styles.fileCardLabel}>Answer Sheet</p>
-                {answerFiles.map((f, i) => (
-                  <p key={i} className={styles.fileCardName}>{f.name} <span>({formatSize(f.size)})</span></p>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          {!error && (
-            <div className={styles.progressBar}>
-              <div
-                className={styles.progressFill}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          )}
-
-          {/* Steps */}
-          {!error && (
-            <div className={styles.steps}>
-              {STEPS.map((step, idx) => {
-                const isCompleted = idx < currentStep;
-                const isActive = idx === currentStep && !isDone;
-                return (
-                  <div
-                    key={step.id}
-                    className={`${styles.step} ${isCompleted ? styles.stepDone : ''} ${isActive ? styles.stepActive : ''}`}
-                  >
-                    <div className={styles.stepIndicator}>
-                      {isCompleted ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      ) : isActive ? (
-                        <div className={styles.stepSpinner} />
-                      ) : (
-                        <span>{idx + 1}</span>
-                      )}
-                    </div>
-                    <div className={styles.stepContent}>
-                      <div className={styles.stepLabelRow}>
-                        <p className={styles.stepLabel}>{step.label}</p>
-                        {isActive && (
-                          <span className={styles.timeLeft}>
-                            ~{Math.ceil(timeLeft)}s left
-                          </span>
-                        )}
-                      </div>
-                      {isActive && <p className={styles.stepDesc}>{step.description}</p>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Error action */}
-          {error && (
-            <div className={styles.errorActions}>
-              <button className="btn btn-secondary" onClick={() => router.push('/')}>
+              <h1 className={styles.minimalTitle}>Analysis Failed</h1>
+              <p className={styles.minimalSubtitle}>{error}</p>
+              <button className="btn btn-secondary" style={{ marginTop: 24 }} onClick={() => router.push('/')}>
                 ← Back to Upload
               </button>
-            </div>
+            </>
+          ) : isDone ? (
+            <>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 24 }}>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <h1 className={styles.minimalTitle}>Analysis Complete!</h1>
+              <p className={styles.minimalSubtitle}>Redirecting to results...</p>
+            </>
+          ) : (
+            <>
+              <div className={styles.sparkles}>
+                <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Center Large Star */}
+                  <path d="M55 20 C55 38 68 51 86 51 C68 51 55 64 55 82 C55 64 42 51 24 51 C42 51 55 38 55 20Z" fill="#FF5A36"/>
+                  {/* Bottom Left Medium Star */}
+                  <path d="M30 65 C30 75 37 82 47 82 C37 82 30 89 30 99 C30 89 23 82 13 82 C23 82 30 75 30 65Z" fill="#FF5A36"/>
+                  {/* Top Left Small Star */}
+                  <path d="M25 30 C25 35 28 38 33 38 C28 38 25 41 25 46 C25 41 22 38 17 38 C22 38 25 35 25 30Z" fill="#FF5A36"/>
+                  {/* Bottom Right Small Star */}
+                  <path d="M70 70 C70 75 73 78 78 78 C73 78 70 81 70 86 C70 81 67 78 62 78 C67 78 70 75 70 70Z" fill="#FF5A36"/>
+                </svg>
+              </div>
+              <h1 className={styles.minimalTitle}>Extracting...</h1>
+              <p className={styles.minimalSubtitle}>This may take a while</p>
+            </>
           )}
         </div>
       </main>
