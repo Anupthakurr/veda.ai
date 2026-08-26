@@ -60,16 +60,27 @@ function sleep(ms: number) {
 }
 
 // ─── JSON Parser Helper ───────────────────────────────────────────────────────
-// Fixes common JSON formatting errors made by AI (like unescaped LaTeX backslashes or raw control chars)
 function parseAIJson<T>(text: string): T {
   let clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  
+  // 1. First attempt to parse normally
   try {
     return JSON.parse(clean);
   } catch (e) {
     console.warn('[VedaAI] JSON parse failed on first attempt. Attempting sanitization...');
-    clean = clean.replace(/(?<!\\)\\(?![\\"/nrtbfu])/g, '\\\\');
+    
+    // 2. Fix unescaped or oddly-escaped backslashes for LaTeX
+    clean = clean.replace(/\\+/g, (match, offset, str) => {
+      const nextChar = str[offset + match.length];
+      if (!nextChar) return match;
+      if (['"', '/', 'b', 'f', 'n', 'r', 't', 'u', '\\'].includes(nextChar)) return match;
+      return match.length % 2 !== 0 ? match + '\\' : match;
+    });
+    
+    // 3. Remove illegal control characters strictly inside the string
     clean = clean.replace(/[\u0000-\u0009\u000B\u000C\u000E-\u001F]+/g, '');
 
+    // 4. Final attempt
     try {
       return JSON.parse(clean);
     } catch (err: any) {
