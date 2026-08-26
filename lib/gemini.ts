@@ -165,6 +165,7 @@ Analyse the provided question paper page images and extract ALL questions in the
 
 RULES:
 - Treat each labelled sub-part as a SEPARATE question. E.g. "11(a)" and "11(b)" are two separate entries.
+- If a question provides an internal choice using "OR" / "अथवा" (e.g., "Solve X. OR Solve Y."), treat the entire block as a SINGLE question. Combine both options into the same question text. Do NOT split it into two separate questions.
 - Preserve the ORIGINAL question numbering exactly as printed.
 - If marks are shown (e.g. "[5 marks]" or "(5)"), capture them as maxMarks; otherwise default to 5.
 - ${langInstruction}
