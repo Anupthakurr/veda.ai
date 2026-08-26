@@ -8,19 +8,21 @@ interface Step {
   id: string;
   label: string;
   description: string;
+  durationMs: number;
 }
 
 const STEPS: Step[] = [
-  { id: 'extracting-questions', label: 'Extracting Questions', description: 'Reading question paper and identifying all questions...' },
-  { id: 'extracting-answers', label: 'Extracting Answers', description: 'Analysing handwritten answer sheet with OCR...' },
-  { id: 'mapping', label: 'Mapping Answers', description: 'Matching each answer to its corresponding question...' },
-  { id: 'grading', label: 'AI Grading & Feedback', description: 'Evaluating answers and generating detailed feedback...' },
+  { id: 'extracting-questions', label: 'Extracting Questions', description: 'Reading question paper and identifying all questions...', durationMs: 5000 },
+  { id: 'extracting-answers', label: 'Extracting Answers', description: 'Analysing handwritten answer sheet with OCR...', durationMs: 15000 },
+  { id: 'mapping', label: 'Mapping Answers', description: 'Matching each answer to its corresponding question...', durationMs: 2000 },
+  { id: 'grading', label: 'AI Grading & Feedback', description: 'Evaluating answers... This step takes the longest (approx 20-30s) as the AI reasons through the logic. Intermittent API retries are handled automatically.', durationMs: 30000 },
 ];
 
 export default function ProcessingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(STEPS[0].durationMs / 1000);
   const [error, setError] = useState<string | null>(null);
   const [questionFiles, setQuestionFiles] = useState<{ name: string; size: number }[]>([]);
   const [answerFiles, setAnswerFiles] = useState<{ name: string; size: number }[]>([]);
@@ -47,17 +49,29 @@ export default function ProcessingPage() {
   }, []);
 
   const runAnalysis = async (formData: FormData) => {
-    // Simulate step-by-step progress while the API runs
-    const stepDuration = 8000; // Each fake step takes ~8s
     let stepIdx = 0;
+    let currentStepTimeRemaining = STEPS[0].durationMs / 1000;
 
-    const stepInterval = setInterval(() => {
-      stepIdx++;
-      if (stepIdx < STEPS.length) {
+    // Timer for counting down the seconds
+    const countdownInterval = setInterval(() => {
+      currentStepTimeRemaining = Math.max(0, currentStepTimeRemaining - 1);
+      setTimeLeft(currentStepTimeRemaining);
+    }, 1000);
+
+    // Timer for progressing through steps
+    const scheduleNextStep = () => {
+      if (stepIdx >= STEPS.length - 1) return; // Wait at the last step (Grading) until API finishes
+      setTimeout(() => {
+        stepIdx++;
         setCurrentStep(stepIdx);
         setProgress((stepIdx / STEPS.length) * 85);
-      }
-    }, stepDuration);
+        currentStepTimeRemaining = STEPS[stepIdx].durationMs / 1000;
+        setTimeLeft(currentStepTimeRemaining);
+        scheduleNextStep();
+      }, STEPS[stepIdx].durationMs);
+    };
+
+    scheduleNextStep();
 
     try {
       const response = await fetch('/api/analyze', {
@@ -65,7 +79,7 @@ export default function ProcessingPage() {
         body: formData,
       });
 
-      clearInterval(stepInterval);
+      clearInterval(countdownInterval);
 
       if (!response.ok) {
         const err = await response.json();
@@ -85,7 +99,7 @@ export default function ProcessingPage() {
       }, 1000);
 
     } catch (err) {
-      clearInterval(stepInterval);
+      clearInterval(countdownInterval);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     }
   };
@@ -198,7 +212,14 @@ export default function ProcessingPage() {
                       )}
                     </div>
                     <div className={styles.stepContent}>
-                      <p className={styles.stepLabel}>{step.label}</p>
+                      <div className={styles.stepLabelRow}>
+                        <p className={styles.stepLabel}>{step.label}</p>
+                        {isActive && (
+                          <span className={styles.timeLeft}>
+                            ~{Math.ceil(timeLeft)}s left
+                          </span>
+                        )}
+                      </div>
                       {isActive && <p className={styles.stepDesc}>{step.description}</p>}
                     </div>
                   </div>
