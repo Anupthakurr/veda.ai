@@ -135,6 +135,7 @@ function AnswerViewer({
               top: Math.max(0, yOffset - 50),
               behavior: 'smooth'
             });
+            drawHighlights(); // Force a redraw once we know the image is fully loaded
           } else {
             setTimeout(scrollToHighlight, 50);
           }
@@ -142,7 +143,7 @@ function AnswerViewer({
         setTimeout(scrollToHighlight, 10);
       }
     }
-  }, [highlightRegions, totalPages]);
+  }, [highlightRegions, totalPages, drawHighlights]);
 
   const drawHighlights = useCallback(() => {
     const canvas = canvasRef.current;
@@ -150,7 +151,7 @@ function AnswerViewer({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const img = imgRef.current;
-    if (!img) return;
+    if (!img || !img.complete || img.naturalWidth === 0) return;
 
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
@@ -232,15 +233,12 @@ function AnswerViewer({
       <div className={styles.imageContainer} ref={scrollContainerRef}>
         {currentImageSrc ? (
           <div className={styles.imageWrapper}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={currentImageSrc}
               alt={`Answer sheet page ${currentPage + 1}`}
               className={styles.answerImage}
-              ref={el => {
-                imgRef.current = el;
-                if (el) el.onload = drawHighlights;
-              }}
+              ref={imgRef}
+              onLoad={drawHighlights}
             />
             {hasHighlightsOnPage && (
               <canvas ref={canvasRef} className={styles.highlightCanvas} />
