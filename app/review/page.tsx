@@ -7,6 +7,16 @@ import styles from './review.module.css';
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
 
+const LATEX_DELIMITERS = [
+  { left: '$$', right: '$$', display: true },
+  { left: '$', right: '$', display: false },
+];
+
+function cleanLatexText(text: string | undefined): string {
+  if (!text) return '';
+  return text.replace(/\\n|\n/g, ' ').replace(/\\+\(/g, '(').replace(/\\+\)/g, ')');
+}
+
 // ─── Question List Item (Accordion) ────────────────────────────────────────────
 function QuestionItem({
   item,
@@ -43,7 +53,7 @@ function QuestionItem({
           <div className={styles.questionText}>
             {item.question?.text && (
               <div className={styles.questionStem}>
-                <Latex>{item.question.text.replace(/\\n|\n/g, ' ')}</Latex>
+                <Latex delimiters={LATEX_DELIMITERS}>{cleanLatexText(item.question.text)}</Latex>
               </div>
             )}
             
@@ -65,7 +75,7 @@ function QuestionItem({
                       )}
                       <div className={`${styles.orOption} ${optionClass}`}>
                         {isMapped && <div className={styles.mappedBadge}>Answered</div>}
-                        <Latex>{opt.replace(/\\n|\n/g, ' ')}</Latex>
+                        <Latex delimiters={LATEX_DELIMITERS}>{cleanLatexText(opt)}</Latex>
                       </div>
                     </div>
                   );
@@ -96,7 +106,7 @@ function QuestionItem({
         <div className={styles.feedbackContainer}>
           <p className={styles.feedbackLabel}>AI Feedback</p>
           <div className={styles.feedbackText}>
-            <Latex>{item.aiFeedback}</Latex>
+            <Latex delimiters={LATEX_DELIMITERS}>{cleanLatexText(item.aiFeedback)}</Latex>
           </div>
         </div>
       )}
