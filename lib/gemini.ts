@@ -39,7 +39,6 @@ function getModel() {
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
     model: 'gemini-3.5-flash-lite',
-    systemInstruction: "CRITICAL: You MUST heavily paraphrase any long blocks of non-mathematical text to avoid triggering verbatim repetition filters. Never quote verbatim.",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
   });
@@ -51,7 +50,6 @@ function getGradingModel() {
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
     model: 'gemini-3.5-flash-lite',
-    systemInstruction: "CRITICAL: You MUST heavily paraphrase any long blocks of non-mathematical text to avoid triggering verbatim repetition filters. Never quote verbatim.",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
   });
@@ -69,21 +67,22 @@ function parseAIJson<T>(text: string): T {
     return JSON.parse(clean);
   } catch (e) {
     console.warn('[VedaAI] JSON parse failed on first attempt. Attempting sanitization...');
-    // 1. Replace unescaped backslashes for LaTeX (e.g., \frac -> \\frac)
-    // Matches \ not preceded by \ and not followed by valid JSON escape chars (\, ", /, n, r, t, b, f, u)
     clean = clean.replace(/(?<!\\)\\(?![\\"/nrtbfu])/g, '\\\\');
-    
-    // 2. Remove illegal control characters strictly inside the string (0x00 to 0x1F) except structural newlines/tabs
-    // It's safer to strip bad control chars entirely rather than replacing structural \n.
-    // JSON.parse fails on raw tabs or newlines *inside string values*.
-    // We'll strip raw control characters that aren't structural newlines (\n) or carriage returns (\r).
     clean = clean.replace(/[\u0000-\u0009\u000B\u000C\u000E-\u001F]+/g, '');
 
     try {
       return JSON.parse(clean);
-    } catch (err) {
-      console.error('[VedaAI] FATAL JSON Parse Error. Cleaned text:', clean);
-      throw err;
+    } catch (err: any) {
+      console.error('[VedaAI] FATAL JSON Parse Error. Cleaned text length:', clean.length);
+      const match = err.message.match(/position (\d+)/);
+      if (match) {
+        const pos = parseInt(match[1], 10);
+        const start = Math.max(0, pos - 40);
+        const end = Math.min(clean.length, pos + 40);
+        const snippet = clean.substring(start, end).replace(/\n/g, '\\n');
+        throw new Error(`JSON Syntax Error near: "...${snippet}..." -> ${err.message}`);
+      }
+      throw new Error(`JSON Syntax Error: ${err.message}. Raw text length: ${clean.length}`);
     }
   }
 }
@@ -280,6 +279,7 @@ RULES:
 - If the student explicitly wrote a question number (e.g., "Ans 1", "Q. 5(a)"), capture it as "questionLabel". Otherwise, leave it null.
 - pageIndex is 0-based (first page = 0, second = 1, etc.)
 - CRITICAL MATH RULE: All mathematical symbols, variables, or equations MUST be enclosed in standard LaTeX delimiters: '$' for inline math (e.g., $\\vec{a}$) and '$$' for block math. Do not output naked LaTeX commands like \\vec{a}.
+- CRITICAL JSON RULE: Ensure all internal double-quotes (\") are properly escaped. Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values.
 - CRITICAL JSON RULE: Double-escape all LaTeX backslashes (e.g., \\\\sqrt) and do NOT use unescaped newlines inside string values.
 - Return ONLY a valid JSON array. No markdown, no explanation.
 
