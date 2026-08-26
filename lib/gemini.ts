@@ -38,8 +38,8 @@ function getModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-3.5-flash-lite',
-    systemInstruction: "CRITICAL: Never recite or copy large blocks of text verbatim from the prompt. Always heavily paraphrase to avoid copyright RECITATION filters.",
+    model: 'gemini-1.5-flash',
+    systemInstruction: "CRITICAL: You MUST heavily paraphrase any long blocks of non-mathematical text to avoid triggering verbatim repetition filters. Never quote verbatim.",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
   });
@@ -50,8 +50,8 @@ function getGradingModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-3.5-flash-lite',
-    systemInstruction: "CRITICAL: Never recite or copy large blocks of text verbatim from the prompt. Always heavily paraphrase to avoid copyright RECITATION filters.",
+    model: 'gemini-1.5-flash',
+    systemInstruction: "CRITICAL: You MUST heavily paraphrase any long blocks of non-mathematical text to avoid triggering verbatim repetition filters. Never quote verbatim.",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
   });
