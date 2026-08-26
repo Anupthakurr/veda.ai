@@ -40,7 +40,7 @@ function getModel() {
   return genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    generationConfig: { thinkingConfig: { thinkingBudget: 0 } } as any,
+    generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } } as any,
   });
 }
 
@@ -51,7 +51,7 @@ function getGradingModel() {
   return genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    generationConfig: { thinkingConfig: { thinkingBudget: 512 } } as any,
+    generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 512 } } as any,
   });
 }
 
