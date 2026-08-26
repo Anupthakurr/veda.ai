@@ -363,13 +363,13 @@ export default function ReviewPage() {
           </div>
 
           <div className={styles.questionList}>
-            {activeTab === 'questions' && filteredItems.map(item => (
+            {activeTab === 'questions' && filteredItems.map((item, index) => (
               <QuestionItem
-                key={item.question?.id}
+                key={`q-${index}-\${item.question?.id || 'no-id'}`}
                 item={item}
-                isSelected={selectedItem?.question?.id === item.question?.id}
+                isSelected={selectedItem === item}
                 onClick={() => {
-                  setSelectedItem(prev => prev?.question?.id === item.question?.id ? null : item);
+                  setSelectedItem(prev => prev === item ? null : item);
                 }}
               />
             ))}
