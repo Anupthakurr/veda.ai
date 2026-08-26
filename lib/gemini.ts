@@ -205,27 +205,45 @@ Ensure bounding boxes tightly surround the actual handwritten answer content.`;
 
   const allRegions: AnswerRegion[] = [];
 
-  // Process each page individually for better accuracy
-  for (let idx = 0; idx < pageImages.length; idx++) {
-    const { base64, mimeType } = pageImages[idx];
+  // ── Batch pages: 4 per API call to stay well within RPD limits ──────────────
+  // A 40-page sheet = 10 batched calls instead of 40 individual calls
+  const BATCH_SIZE = 4;
+  const MAX_PAGES = 20; // Safety cap — beyond 20 pages we'd exhaust 20 RPD quota
+  const pagesToProcess = pageImages.slice(0, MAX_PAGES);
+
+  if (pageImages.length > MAX_PAGES) {
+    console.warn(`[VedaAI] Answer sheet has ${pageImages.length} pages — only processing first ${MAX_PAGES} due to API limits.`);
+  }
+
+  for (let batchStart = 0; batchStart < pagesToProcess.length; batchStart += BATCH_SIZE) {
+    const batch = pagesToProcess.slice(batchStart, batchStart + BATCH_SIZE);
+
     const parts: Part[] = [
-      { text: prompt + `\n\nThis is PAGE ${idx + 1} (pageIndex: ${idx}). Extract all answer regions from this page only.` },
-      imagePart(base64, mimeType),
+      { text: prompt + `\n\nProcessing pages ${batchStart + 1}–${batchStart + batch.length} of the answer sheet:` }
     ];
+
+    batch.forEach(({ base64, mimeType }, i) => {
+      const pageIdx = batchStart + i;
+      parts.push({ text: `\n--- PAGE ${pageIdx + 1} (pageIndex: ${pageIdx}) ---` });
+      parts.push(imagePart(base64, mimeType));
+    });
 
     const text = await callWithRotation(m => m.generateContent(parts).then(r => r.response.text().trim()));
     const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 
     try {
-      const pageRegions = JSON.parse(jsonText) as AnswerRegion[];
-      // Re-index to ensure pageIndex is correct
-      pageRegions.forEach((r, i) => {
-        r.id = `ar_${idx}_${i}`;
-        r.pageIndex = idx;
+      const batchRegions = JSON.parse(jsonText) as AnswerRegion[];
+      // Ensure pageIndex and id are correct for each region
+      batchRegions.forEach((r, i) => {
+        if (r.pageIndex === undefined || r.pageIndex === null) {
+          r.pageIndex = batchStart; // fallback
+        }
+        r.id = `ar_${r.pageIndex}_${i}`;
       });
-      allRegions.push(...pageRegions);
+      allRegions.push(...batchRegions);
+      console.log(`[VedaAI] Batch pages ${batchStart + 1}–${batchStart + batch.length}: extracted ${batchRegions.length} answer regions`);
     } catch {
-      console.warn(`Failed to parse answer regions for page ${idx}`);
+      console.warn(`[VedaAI] Failed to parse answer regions for batch starting page ${batchStart + 1}`);
     }
   }
 
