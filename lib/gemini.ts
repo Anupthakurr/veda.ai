@@ -38,9 +38,9 @@ function getModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-1.5-flash',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } } as any,
+    generationConfig: { responseMimeType: 'application/json' } as any,
   });
 }
 
@@ -49,9 +49,9 @@ function getGradingModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-1.5-flash',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 512 } } as any,
+    generationConfig: { responseMimeType: 'application/json' } as any,
   });
 }
 
@@ -115,6 +115,7 @@ async function callWithRotation(
   const MAX_RETRIES_PER_KEY = 3;
   const startKeyIndex = currentKeyIndex;
   let keyRotations = 0;
+  let lastErrorMsg = '';
 
   while (keyRotations <= API_KEYS.length) {
     let retryCount = 0;
@@ -126,6 +127,7 @@ async function callWithRotation(
         return result;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
+        lastErrorMsg = message;
         const isRetryable =
           message.includes('429') ||
           message.includes('503') ||
@@ -140,7 +142,7 @@ async function callWithRotation(
           if (retryCount < MAX_RETRIES_PER_KEY) {
             // Exponential backoff: 2s, 4s, 8s
             const backoff = Math.pow(2, retryCount) * 1000;
-            console.warn(`[Gemini] API error on key ${currentKeyIndex + 1} (${message.substring(0, 40)}...) — backoff ${backoff}ms (retry ${retryCount}/${MAX_RETRIES_PER_KEY})`);
+            console.warn(`[Gemini] API error on key ${currentKeyIndex + 1} (${message.substring(0, 80)}...) — backoff ${backoff}ms (retry ${retryCount}/${MAX_RETRIES_PER_KEY})`);
             await sleep(backoff);
           }
         } else {
@@ -161,7 +163,7 @@ async function callWithRotation(
   }
 
   throw new Error(
-    `All ${API_KEYS.length} Gemini API key(s) have hit their rate limit. Please wait 1 minute and try again.`
+    `All ${API_KEYS.length} Gemini API key(s) failed. Last API Error: ${lastErrorMsg}`
   );
 }
 
