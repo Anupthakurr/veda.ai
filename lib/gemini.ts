@@ -38,7 +38,7 @@ function getModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash-lite',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
   });
@@ -49,7 +49,7 @@ function getGradingModel() {
   const key = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash-lite',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generationConfig: { responseMimeType: 'application/json' } as any,
   });
