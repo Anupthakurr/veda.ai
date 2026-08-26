@@ -59,6 +59,7 @@ app/
   api/analyze/route.ts  # API: orchestrates Gemini pipeline
 lib/
   gemini.ts             # Gemini API client (extraction, mapping, grading, rotation)
+  pdfRenderer.ts        # Client-side PDF-to-image conversion using PDF.js
   types.ts              # TypeScript interfaces
 ```
 
