@@ -288,6 +288,10 @@ export default function ReviewPage() {
 
   const highlightRegions = selectedItem ? selectedItem.answerRegions : [];
 
+  const attemptedMaxMarks = result.gradedItems
+    .filter(item => item.status === 'answered')
+    .reduce((sum, item) => sum + (item.question?.maxMarks ?? 5), 0);
+
   return (
     <div className={styles.page}>
       {/* Navbar */}
@@ -330,9 +334,14 @@ export default function ReviewPage() {
         {/* Left: Question List */}
         <aside className={`${styles.leftPanel} ${mobileTab === 'questions' ? styles.showOnMobile : styles.hideOnMobile}`}>
           <div className={styles.panelHeader}>
-            <h2 className={styles.panelTitle}>Extracted Questions (from question paper)</h2>
+            <div>
+              <h2 className={styles.panelTitle}>Questions</h2>
+              <p className={styles.panelSubtitle}>
+                Score: <span className={styles.scoreHighlight}>{result.marksAwarded}/{attemptedMaxMarks}</span> (Attempted)
+              </p>
+            </div>
             <button className={styles.expandAllBtn} onClick={() => setSelectedItem(null)}>
-              Expand All
+              Collapse All
             </button>
           </div>
 
