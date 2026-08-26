@@ -177,6 +177,13 @@
   flex: 1;
 }
 
+.questionBadgeGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .questionNumBadge {
   width: 28px;
   height: 28px;
@@ -189,6 +196,13 @@
   font-weight: 700;
   font-size: 13px;
   flex-shrink: 0;
+}
+
+.questionSubNum {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+  margin-top: 2px;
 }
 
 .questionText {

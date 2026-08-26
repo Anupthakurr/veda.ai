@@ -24,6 +24,11 @@ function QuestionItem({
   if (marks === maxMarks) scoreColorCls = styles.scoreGreen;
   else if (marks > 0) scoreColorCls = styles.scoreOrange;
 
+  const rawNum = item.question?.number ?? '?';
+  const match = rawNum.match(/^(\D*\d+)\s*(.*)$/);
+  const mainNum = match ? match[1] : rawNum;
+  const subNum = match ? match[2] : '';
+
   return (
     <div
       className={`${styles.questionItem} ${isExpanded ? styles.questionItemExpanded : ''}`}
@@ -31,7 +36,10 @@ function QuestionItem({
     >
       <div className={styles.questionHeader}>
         <div className={styles.questionNumWrapper}>
-          <div className={styles.questionNumBadge}>{item.question?.number ?? '?'}</div>
+          <div className={styles.questionBadgeGroup}>
+            <div className={styles.questionNumBadge}>{mainNum}</div>
+            {subNum && <div className={styles.questionSubNum}>{subNum}</div>}
+          </div>
           <div className={styles.questionText}>
             <Latex>{(item.question?.text || '').replace(/\\n|\n/g, ' ')}</Latex>
           </div>
