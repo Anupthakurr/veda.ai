@@ -99,17 +99,21 @@ async function callWithRotation(
         return result;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
-        const isRateLimit =
+        const isRetryable =
           message.includes('429') ||
+          message.includes('503') ||
+          message.includes('500') ||
           message.toLowerCase().includes('quota') ||
-          message.toLowerCase().includes('rate limit');
+          message.toLowerCase().includes('rate limit') ||
+          message.toLowerCase().includes('overloaded') ||
+          message.toLowerCase().includes('fetch failed');
 
-        if (isRateLimit) {
+        if (isRetryable) {
           retryCount++;
           if (retryCount < MAX_RETRIES_PER_KEY) {
             // Exponential backoff: 2s, 4s, 8s
             const backoff = Math.pow(2, retryCount) * 1000;
-            console.warn(`[Gemini] Rate limit on key ${currentKeyIndex + 1} — backoff ${backoff}ms (retry ${retryCount}/${MAX_RETRIES_PER_KEY})`);
+            console.warn(`[Gemini] API error on key ${currentKeyIndex + 1} (${message.substring(0, 40)}...) — backoff ${backoff}ms (retry ${retryCount}/${MAX_RETRIES_PER_KEY})`);
             await sleep(backoff);
           }
         } else {
