@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { fileToImageUrls } from '@/lib/pdfRenderer';
+import { fileToImageUrls, fileToImageBlobs } from '@/lib/pdfRenderer';
 import styles from './upload.module.css';
 
 interface UploadZoneProps {
@@ -93,27 +93,38 @@ export default function UploadPage() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      questionFiles.forEach(f => formData.append('questionPaper', f));
-      answerFiles.forEach(f => formData.append('answerSheet', f));
-
-      // Store file info (tiny — just name/size) in sessionStorage for the processing page
+      // Store file info for the processing page display
       const questionFileInfo = questionFiles.map(f => ({ name: f.name, size: f.size }));
       const answerFileInfo = answerFiles.map(f => ({ name: f.name, size: f.size }));
       sessionStorage.setItem('questionFileInfo', JSON.stringify(questionFileInfo));
       sessionStorage.setItem('answerFileInfo', JSON.stringify(answerFileInfo));
 
-      // Render answer sheet files to displayable image URLs
-      // - For images (JPG/PNG): returns a single Object URL
-      // - For PDFs: renders each page to a canvas → blob URL via PDF.js
-      const allImageUrls: string[] = [];
-      for (const file of answerFiles) {
-        const urls = await fileToImageUrls(file);
-        allImageUrls.push(...urls);
-      }
-      (window as unknown as { __answerSheetURLs?: string[] }).__answerSheetURLs = allImageUrls;
+      // Render both files to compressed JPEG images client-side
+      // This reduces payload from ~17 MB (raw PDFs) to ~2 MB (compressed JPEGs)
+      // staying well under Vercel's 4.5 MB serverless body limit
+      const formData = new FormData();
 
-      // Store form data in window global for the processing page to send to API
+      // Question paper → compressed blobs for API
+      for (const file of questionFiles) {
+        const blobs = await fileToImageBlobs(file);
+        blobs.forEach((blob, i) => formData.append('questionPaper', blob, `qp_page_${i}.jpg`));
+      }
+
+      // Answer sheet → compressed blobs for API + high-quality URLs for display
+      const allDisplayUrls: string[] = [];
+      for (const file of answerFiles) {
+        const [displayUrls, apiBlobs] = await Promise.all([
+          fileToImageUrls(file),   // high-quality for viewer
+          fileToImageBlobs(file),  // compressed for API
+        ]);
+        allDisplayUrls.push(...displayUrls);
+        apiBlobs.forEach((blob, i) => formData.append('answerSheet', blob, `as_page_${i}.jpg`));
+      }
+
+      // Store display URLs in window global for the review page viewer
+      (window as unknown as { __answerSheetURLs?: string[] }).__answerSheetURLs = allDisplayUrls;
+
+      // Store FormData (with compressed images) for the processing page
       (window as unknown as { __analysisFormData?: FormData }).__analysisFormData = formData;
 
       // Navigate to processing page
