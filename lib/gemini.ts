@@ -167,7 +167,7 @@ RULES:
 - Treat each labelled sub-part as a SEPARATE question. E.g. "11(a)" and "11(b)" are two separate entries.
 - If a question provides an internal choice using "OR" / "अथवा" (e.g., "Solve X. OR Solve Y."), treat the entire block as a SINGLE question. Combine both options into the same question text. Do NOT split it into two separate questions.
 - Preserve the ORIGINAL question numbering exactly as printed.
-- If marks are shown (e.g. "[5 marks]" or "(5)"), capture them as maxMarks; otherwise default to 5.
+- INFER THE MARKING SCHEME accurately. Read the instructions at the top (e.g., "Q1-5 carry 1 mark") AND look for marks printed next to questions (e.g., "[5]"). Assign the correct maxMarks to EACH question based on the official scheme. If completely unknown, default to 5.
 - ${langInstruction}
 - Return ONLY a valid JSON array. No markdown, no explanation.
 
@@ -280,7 +280,7 @@ Your tasks:
 1. Match each answer region to the correct question (students may answer out of order).
 2. For questions with no matching answer, mark them as "unanswered".
 3. For answer regions that don't match any question, mark them as "unmatched".
-4. Grade each answered question: award marks and provide brief feedback.
+4. Grade each answered question: award marks STRICTLY based on the maxMarks provided in the QUESTION object. Do NOT exceed maxMarks. Award partial marks for partially correct answers. Provide brief feedback.
 5. Provide an overall feedback summary.
 
 ${langInstruction}
