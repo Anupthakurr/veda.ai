@@ -11,11 +11,13 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@types/multer": "^2.2.0",
+    "katex": "^0.18.4",
     "multer": "^2.2.0",
     "next": "16.3.3",
     "pdfjs-dist": "^6.2.108",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-latex-next": "^3.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

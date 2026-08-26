@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
     const questionFiles = formData.getAll('questionPaper') as File[];
     // Get answer sheet files
     const answerFiles = formData.getAll('answerSheet') as File[];
+    
+    const language = (formData.get('language') as string) || 'auto';
 
     if (!questionFiles.length || !answerFiles.length) {
       return NextResponse.json(
@@ -49,14 +51,14 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Extract questions
     const questionImages = await processFiles(questionFiles);
-    const questions = await extractQuestions(questionImages);
+    const questions = await extractQuestions(questionImages, language);
 
     // Step 2: Extract answers
     const answerImages = await processFiles(answerFiles);
     const answerRegions = await extractAnswers(answerImages);
 
     // Step 3 & 4: Map and grade
-    const { gradedItems, unmatchedAnswers } = await mapAndGrade(questions, answerRegions);
+    const { gradedItems, unmatchedAnswers } = await mapAndGrade(questions, answerRegions, language);
 
     // Calculate totals
     const totalMarks = gradedItems.reduce((sum, item) => sum + (item.question?.maxMarks || 5), 0);

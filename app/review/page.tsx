@@ -4,6 +4,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnalysisResult, GradedItem, AnswerRegion } from '@/lib/types';
 import styles from './review.module.css';
+import 'katex/dist/katex.min.css';
+import Latex from 'react-latex-next';
 
 // ─── Score Summary Banner ──────────────────────────────────────────────────────
 function ScoreSummary({ result }: { result: AnalysisResult }) {
@@ -57,7 +59,7 @@ function ScoreSummary({ result }: { result: AnalysisResult }) {
         </div>
       </div>
       <div className={styles.scoreFeedback}>
-        <p className={styles.scoreFeedbackText}>{result.overallFeedback}</p>
+        <div className={styles.scoreFeedbackText}><Latex>{result.overallFeedback || ''}</Latex></div>
       </div>
     </div>
   );
@@ -94,13 +96,13 @@ function QuestionItem({
           )}
         </div>
       </div>
-      <p className={styles.questionText}>{item.question?.text}</p>
+      <div className={styles.questionText}><Latex>{item.question?.text || ''}</Latex></div>
       {isSelected && item.aiFeedback && (
         <div className={styles.feedbackInline}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 9a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1zm0-4a1 1 0 100 2 1 1 0 000-2z"/>
           </svg>
-          {item.aiFeedback}
+          <Latex>{item.aiFeedback}</Latex>
         </div>
       )}
     </div>
@@ -396,9 +398,9 @@ export default function ReviewPage() {
 
           {selectedItem ? (
             <div className={styles.feedbackPanel}>
-              <div className={styles.feedbackQuestion}>
+              <div className={styles.feedbackHeader}>
                 <span className={styles.feedbackQNum}>Q{selectedItem.question?.number}</span>
-                <p className={styles.feedbackQText}>{selectedItem.question?.text}</p>
+                <div className={styles.feedbackQText}><Latex>{selectedItem.question?.text || ''}</Latex></div>
               </div>
 
               <div className={styles.feedbackScore}>
@@ -418,9 +420,9 @@ export default function ReviewPage() {
               {selectedItem.answerRegions.length > 0 && (
                 <div className={styles.feedbackAnswerText}>
                   <p className={styles.feedbackAnswerLabel}>Extracted Answer</p>
-                  <p className={styles.feedbackAnswerContent}>
-                    {selectedItem.answerRegions.map(r => r.extractedText).join(' ')}
-                  </p>
+                  <div className={styles.feedbackAnswerContent}>
+                    <Latex>{selectedItem.answerRegions.map(r => r.extractedText).join(' ')}</Latex>
+                  </div>
                 </div>
               )}
 
@@ -431,7 +433,7 @@ export default function ReviewPage() {
                   </svg>
                   AI Feedback
                 </p>
-                <p className={styles.feedbackAIText}>{selectedItem.aiFeedback}</p>
+                <div className={styles.feedbackAIText}><Latex>{selectedItem.aiFeedback || ''}</Latex></div>
               </div>
             </div>
           ) : (
@@ -446,7 +448,7 @@ export default function ReviewPage() {
           {/* Overall feedback at bottom */}
           <div className={styles.overallFeedback}>
             <p className={styles.overallFeedbackLabel}>Overall Assessment</p>
-            <p className={styles.overallFeedbackText}>{result.overallFeedback}</p>
+            <div className={styles.overallFeedbackText}><Latex>{result.overallFeedback || ''}</Latex></div>
           </div>
         </aside>
       </div>

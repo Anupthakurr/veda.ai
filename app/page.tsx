@@ -84,6 +84,7 @@ export default function UploadPage() {
   const [answerFiles, setAnswerFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState('auto');
 
   const canAnalyze = questionFiles.length > 0 && answerFiles.length > 0 && !isProcessing;
 
@@ -214,6 +215,23 @@ export default function UploadPage() {
           )}
 
           <div className={styles.actionRow}>
+            {canAnalyze && (
+              <div className={styles.languageSelectWrapper}>
+                <label htmlFor="language" className={styles.languageLabel}>Preferred Output Language</label>
+                <select 
+                  id="language"
+                  className={styles.languageSelect}
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  disabled={isProcessing}
+                >
+                  <option value="auto">Auto-detect (Mixed)</option>
+                  <option value="english">English Only</option>
+                  <option value="hindi">Hindi Only</option>
+                </select>
+              </div>
+            )}
+
             <button
               className="btn btn-primary btn-lg"
               disabled={!canAnalyze}

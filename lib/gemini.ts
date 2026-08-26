@@ -151,8 +151,14 @@ function imagePart(base64: string, mimeType: string): Part {
 
 // ─── STEP 1: Extract questions from question paper images ─────────────────────
 export async function extractQuestions(
-  pageImages: { base64: string; mimeType: string }[]
+  pageImages: { base64: string; mimeType: string }[],
+  language: string = 'auto'
 ): Promise<Question[]> {
+  let langInstruction = '';
+  if (language === 'english') langInstruction = 'CRITICAL: If the question paper contains dual languages (e.g., Hindi and English), extract the questions ONLY in English.';
+  else if (language === 'hindi') langInstruction = 'CRITICAL: If the question paper contains dual languages (e.g., Hindi and English), extract the questions ONLY in Hindi.';
+  else langInstruction = 'Extract the questions in the language they are written.';
+
   const prompt = `You are an expert at analysing question papers.
 
 Analyse the provided question paper page images and extract ALL questions in the exact printed order.
@@ -161,6 +167,7 @@ RULES:
 - Treat each labelled sub-part as a SEPARATE question. E.g. "11(a)" and "11(b)" are two separate entries.
 - Preserve the ORIGINAL question numbering exactly as printed.
 - If marks are shown (e.g. "[5 marks]" or "(5)"), capture them as maxMarks; otherwise default to 5.
+- ${langInstruction}
 - Return ONLY a valid JSON array. No markdown, no explanation.
 
 Output JSON format:
@@ -256,8 +263,14 @@ The "id" format: "ar_" + pageIndex + "_" + regionIndex within that page.`;
 // ─── STEP 3 & 4: Map answers to questions + grade ────────────────────────────
 export async function mapAndGrade(
   questions: Question[],
-  answerRegions: AnswerRegion[]
+  answerRegions: AnswerRegion[],
+  language: string = 'auto'
 ): Promise<{ gradedItems: GradedItem[]; unmatchedAnswers: UnmatchedAnswer[] }> {
+  let langInstruction = '';
+  if (language === 'english') langInstruction = 'CRITICAL: You MUST write all your feedback (aiFeedback and overallFeedback) ONLY in English, regardless of the language of the question paper or student answers.';
+  else if (language === 'hindi') langInstruction = 'CRITICAL: You MUST write all your feedback (aiFeedback and overallFeedback) ONLY in Hindi, regardless of the language of the question paper or student answers.';
+  else langInstruction = 'Write your feedback in the same language that the question paper and student answers are written in.';
+
   const prompt = `You are an expert teacher and grader.
 
 You have a list of QUESTIONS from a question paper and a list of ANSWER REGIONS extracted from a student's answer sheet.
@@ -268,6 +281,8 @@ Your tasks:
 3. For answer regions that don't match any question, mark them as "unmatched".
 4. Grade each answered question: award marks and provide brief feedback.
 5. Provide an overall feedback summary.
+
+${langInstruction}
 
 QUESTIONS:
 ${JSON.stringify(questions, null, 2)}
