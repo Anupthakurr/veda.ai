@@ -247,7 +247,6 @@ export default function ReviewPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem('analysisResult');
-    const images = sessionStorage.getItem('answerSheetImages');
 
     if (!stored) {
       router.push('/');
@@ -255,8 +254,11 @@ export default function ReviewPage() {
     }
 
     setResult(JSON.parse(stored));
-    if (images) {
-      setAnswerImages(JSON.parse(images));
+
+    // Read answer sheet Object URLs from window global (set by upload page)
+    const urls = (window as unknown as { __answerSheetURLs?: string[] }).__answerSheetURLs;
+    if (urls && urls.length > 0) {
+      setAnswerImages(urls);
     }
   }, [router]);
 

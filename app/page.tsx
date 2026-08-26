@@ -96,34 +96,22 @@ export default function UploadPage() {
       questionFiles.forEach(f => formData.append('questionPaper', f));
       answerFiles.forEach(f => formData.append('answerSheet', f));
 
-      // Store files in sessionStorage as base64 for the viewer
-      // Also store form data reference for the API
-      sessionStorage.setItem('analysisStatus', 'processing');
-
-      // Store file info for processing page
+      // Store file info (tiny — just name/size) in sessionStorage for the processing page
       const questionFileInfo = questionFiles.map(f => ({ name: f.name, size: f.size }));
       const answerFileInfo = answerFiles.map(f => ({ name: f.name, size: f.size }));
       sessionStorage.setItem('questionFileInfo', JSON.stringify(questionFileInfo));
       sessionStorage.setItem('answerFileInfo', JSON.stringify(answerFileInfo));
 
-      // Convert answer sheet pages to base64 for the viewer
-      const answerBase64s: string[] = [];
-      for (const file of answerFiles) {
-        const base64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-        answerBase64s.push(base64);
-      }
-      sessionStorage.setItem('answerSheetImages', JSON.stringify(answerBase64s));
+      // Store answer sheet files as Object URLs in window global (NOT sessionStorage)
+      // Object URLs are just tiny pointers — no quota issues, survive client-side navigation
+      const answerObjectURLs = answerFiles.map(f => URL.createObjectURL(f));
+      (window as unknown as { __answerSheetURLs?: string[] }).__answerSheetURLs = answerObjectURLs;
+
+      // Store form data in window global for the processing page to send to API
+      (window as unknown as { __analysisFormData?: FormData }).__analysisFormData = formData;
 
       // Navigate to processing page
       router.push('/processing');
-
-      // Fire the API call (store formdata in indexedDB workaround: re-read from session)
-      // We need to pass the actual files - use a global store
-      (window as unknown as { __analysisFormData?: FormData }).__analysisFormData = formData;
 
     } catch (err) {
       setIsProcessing(false);
